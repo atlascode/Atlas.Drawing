@@ -63,21 +63,26 @@ namespace Atlas.Drawing.Serialization.PNG
             // Build IDAT chunk
             var IDAT = new EndianBinaryWriter(converter, idatms);
 
-            for (int i=0;i<height;i++) {
+            for (int i = height-1; i>=0;i--)
+            {
 	            // no filter
 	            IDAT.Write((byte)0);
                 uint p;
 	            int j;
-	            if ( !transparent ) {
+	            if ( !transparent )
+                {
 	                //for(j=0;j<width;j++) {
 	                //    p = getPixel(img, j, i);
 	                //    IDAT.Write((uint)(((p&0xFFFFFF) << 8)|0xFF));
 	                //}
-                } else {
-	                for(j=0;j<width;j++) {
-	                    p = getPixel32(img, width, height, j, i);
-                        //IDAT.Write(p);
-                        IDAT.Write(((p & 0xFFFFFF) << 8) | (p >> 24)); //>>>
+                }
+                else
+                {
+	                for(j=0;j<width;j++)
+                    {
+	                    p = getPixel32(img, width, j, i);
+                        IDAT.Write(p);
+                        //IDAT.Write(((p & 0xFFFFFF) << 8) | (p >> 24)); //>>>
                     }
 	            }
 	        }
@@ -89,20 +94,20 @@ namespace Atlas.Drawing.Serialization.PNG
 	        return ms.ToArray();
 	    }
 
-        private uint getPixel32(byte[] img, int width,int height, int x, int y)
+        private uint getPixel32(byte[] img, int width,int x, int y)
         {
-            int startIndex = ((width) * 4 * (height-1-y)) + (x * 4);
-            //A
-            uint value = img[startIndex + 3];
-            //R
-            value <<= 8;
-            value |= img[startIndex + 2];
+            int startIndex = ((width * 4) * y) + (x * 4);
+            //B
+            uint value = img[startIndex + 2];
             //G
             value <<= 8;
             value |= img[startIndex + 1];
-            //B
+            //R
             value <<= 8;
             value |= img[startIndex];
+            //A
+            value <<= 8;
+            value |= img[startIndex + 3];
 
             return value;
         }
