@@ -14,12 +14,11 @@ namespace ExampleUsage
         static void Main(string[] args)
         {
             var bmp = Image.FromFile("..\\..\\bmpsuite-2.4\\g\\rgb24.bmp");
-            //var ms = new MemoryStream();
-            //bmp.Save(ms, ImageFormat.MemoryBmp);
-            //var img = Image.FromStream(ms);
-            //img.Save("test.png", ImageFormat.Png);
-
             bmp.Save("rgb24.png", ImageFormat.Png);
+
+
+            var bmp2 = Image.FromFile("..\\..\\bmpsuite-2.4\\g\\pal8.bmp");
+            bmp2.Save("pal8.png", ImageFormat.Png);
         }
     }
 }
