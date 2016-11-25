@@ -30,6 +30,16 @@ namespace Atlas.Drawing.Serialization.BMP
         {
             int headerPosition = 0;
             HeaderSize = BitConverter.ToUInt32(bytes, 14 + headerPosition); headerPosition += 4;
+
+            if(HeaderSize == 12) // a 12 byte header is the smallest header possible and is for the OS/2 BMPv1 or Windows BMPv2 format
+            {
+                Width = BitConverter.ToInt16(bytes, 14 + headerPosition); headerPosition += 2;
+                Height = BitConverter.ToInt16(bytes, 14 + headerPosition); headerPosition += 2;
+                Planes = BitConverter.ToUInt16(bytes, 14 + headerPosition); headerPosition += 2;
+                BitsPerPixel = BitConverter.ToUInt16(bytes, 14 + headerPosition); headerPosition += 2;
+                return;
+            }
+
             Width = BitConverter.ToInt32(bytes, 14 + headerPosition); headerPosition += 4;
             Height = BitConverter.ToInt32(bytes, 14 + headerPosition); headerPosition += 4;
 
