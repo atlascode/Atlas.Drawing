@@ -1,10 +1,37 @@
-﻿using Ionic.Zlib;
-using MiscUtil.Conversion;
+﻿using MiscUtil.Conversion;
 using MiscUtil.IO;
+using System;
 using System.IO;
+using System.IO.Compression;
 
 namespace Atlas.Drawing.Serialization.PNG
 {
+    public class Adler32Computer
+    {
+        private int a = 1;
+        private int b = 0;
+
+        public int Checksum
+        {
+            get
+            {
+                return ((b * 65536) + a);
+            }
+        }
+
+        private static readonly int Modulus = 65521;
+
+        public void Update(byte[] data, int offset, int length)
+        {
+            for (int counter = 0; counter < length; ++counter)
+            {
+                a = (a + (data[offset + counter])) % Modulus;
+                b = (b + a) % Modulus;
+            }
+        }
+    }
+
+
     public class PNGEncoder
     {
         public byte[] Encode(byte[] img, int width, int height)
@@ -86,13 +113,43 @@ namespace Atlas.Drawing.Serialization.PNG
         private static byte[] Compress(Stream input)
         {
             input.Position = 0;
+
+            byte[] uncompressedBytes;
+            using (var ms = new MemoryStream())
+            {
+                input.CopyTo(ms);
+                uncompressedBytes = ms.ToArray();
+                input.Position = 0;
+            }
+
             using (var compressStream = new MemoryStream())
-            { 
-                using (var compressor = new ZlibStream(compressStream, Ionic.Zlib.CompressionMode.Compress))
+            {
+
+                var adler = new Adler32Computer();
+                adler.Update(uncompressedBytes, 0, uncompressedBytes.Length);
+
+
+                using (var compressor = new DeflateStream(compressStream, CompressionMode.Compress))
                 {
                     input.CopyTo(compressor);
                 }
-                return compressStream.ToArray();
+
+                var compressedBytes = compressStream.ToArray();
+
+                var zlibBytes = new byte[compressedBytes.Length + 6];
+
+                zlibBytes[0] = 0x78;
+                zlibBytes[1] = 0x01;
+
+                compressedBytes.CopyTo(zlibBytes, 2);
+
+                byte[] intBytes = BitConverter.GetBytes(adler.Checksum);
+                compressedBytes[compressedBytes.Length - 1] = intBytes[0];
+                compressedBytes[compressedBytes.Length - 2] = intBytes[1];
+                compressedBytes[compressedBytes.Length - 3] = intBytes[2];
+                compressedBytes[compressedBytes.Length - 4] = intBytes[3];
+
+                return zlibBytes;
             }
         }
 
