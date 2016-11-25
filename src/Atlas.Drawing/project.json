@@ -1,0 +1,15 @@
+{
+  "version": "1.0.0-*",
+
+  "dependencies": {
+    "DotNetZip.Zlib.vNextUnofficial": "1.9.8.3",
+    "NETStandard.Library": "1.6.0"
+  },
+
+  "frameworks": {
+    "net451": {},
+    "netstandard1.6": {
+      "imports": "dnxcore50"
+    }
+  }
+}

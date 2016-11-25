@@ -1,0 +1,11 @@
+
+_ReSharper*
+[Tt]est[Rr]esult*
+[Bb]in/
+[Oo]bj/
+*.suo
+*.user
+[Bb]ld/
+packages/
+node_modules/
+.vs/
