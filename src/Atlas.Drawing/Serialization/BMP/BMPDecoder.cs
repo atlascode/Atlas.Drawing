@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -9,17 +10,71 @@ namespace Atlas.Drawing.Serialization.BMP
     {
         private byte[] colorTable;
 
+        private BitmapInformationHeader info;
+        private int RedChannelBitmaskOffset = 0;
+        private int GreenChannelBitmaskOffset = 0;
+        private int BlueChannelBitmaskOffset = 0;
+        private int AlphaChannelBitmaskOffset = 0;
+        private decimal RedChannelBitmaskMaxValue = 255;
+        private decimal GreenChannelBitmaskMaxValue = 255;
+        private decimal BlueChannelBitmaskMaxValue = 255;
+        private decimal AlphaChannelBitmaskMaxValue = 255;
+
         public byte[] Decode(ref byte[] bytes, out int width, out int height)
         {
             var header = new BitmapFileHeader();
             header.Deserialize(bytes);
 
-            var info = new BitmapInformationHeader();
+            info = new BitmapInformationHeader();
             info.Deserialize(bytes);
 
             if(info.BitsPerPixel <= 8 && info.ColorsInColorTable == 0)
             {
                 info.ColorsInColorTable = 256;
+            }
+
+            if(info.BlueChannelBitmask == 0 && info.GreenChannelBitmask == 0 && info.RedChannelBitmask == 0)
+            {
+                if (info.BitsPerPixel == 16)
+                {
+                    info.RedChannelBitmask = 0x7C00;
+                    info.GreenChannelBitmask = 0x3E0;
+                    info.BlueChannelBitmask = 0x1F;
+                }
+                else if (info.BitsPerPixel == 24)
+                {
+                    info.RedChannelBitmask = 0xFF0000;
+                    info.GreenChannelBitmask = 0x00FF00;
+                    info.BlueChannelBitmask = 0x0000FF;
+                }
+                else if (info.BitsPerPixel == 32)
+                {
+                    info.RedChannelBitmask = 0xFF0000;
+                    info.GreenChannelBitmask = 0xFF00; 
+                    info.BlueChannelBitmask = 0xFF; 
+                    info.AlphaChannelBitmask = unchecked((int)0xFF000000);
+                }
+            }
+
+            if(info.RedChannelBitmask != 0)
+            {
+                RedChannelBitmaskOffset = CalculateBitmaskOffset(info.RedChannelBitmask);
+                RedChannelBitmaskMaxValue = (uint)info.RedChannelBitmask >> RedChannelBitmaskOffset;
+            }
+            if (info.GreenChannelBitmask != 0)
+            {
+                GreenChannelBitmaskOffset = CalculateBitmaskOffset(info.GreenChannelBitmask);
+                GreenChannelBitmaskMaxValue = (uint)info.GreenChannelBitmask >> GreenChannelBitmaskOffset;
+            }
+            if (info.BlueChannelBitmask != 0)
+            {
+                BlueChannelBitmaskOffset = CalculateBitmaskOffset(info.BlueChannelBitmask);
+                BlueChannelBitmaskMaxValue = (uint)info.BlueChannelBitmask >> BlueChannelBitmaskOffset;
+            }
+            if (info.AlphaChannelBitmask != 0)
+            {
+                AlphaChannelBitmaskOffset = CalculateBitmaskOffset(info.AlphaChannelBitmask);
+                AlphaChannelBitmaskMaxValue = (uint)info.AlphaChannelBitmask >> AlphaChannelBitmaskOffset;
             }
 
             if (info.ColorsInColorTable > 0) {
@@ -37,7 +92,7 @@ namespace Atlas.Drawing.Serialization.BMP
                 }
             }
 
-            bool useColorTable = info.BitsPerPixel < 24 && info.ColorsInColorTable > 0;
+            bool useColorTable = info.BitsPerPixel < 16 && info.ColorsInColorTable > 0;
 
             // Unpack any bytes into 32bpp RGBA
             var standardBytes = new byte[info.Width * Math.Abs(info.Height) * 4];
@@ -230,6 +285,21 @@ namespace Atlas.Drawing.Serialization.BMP
             return standardBytes;
         }
 
+        private int CalculateBitmaskOffset(int mask)
+        {
+            var bits = new BitArray(new int[] { mask });
+
+            for (int i = 0; i < info.BitsPerPixel; i++)
+            {
+                if(bits[i] == true)
+                {
+                    return i;
+                }
+            }
+
+            return 0;
+        }
+
         private void ConvertPixel(ref byte[] sourceBytes, uint sourceOffset, uint sourceStride, uint sourceBitsPerPixel, uint x, uint y, ref byte[] destinationBytes, uint destinationStride, bool useColorTable, uint flip)
         {
             uint sourcePixelOffset = (y * sourceStride) + (x * sourceBitsPerPixel / 8) + sourceOffset;
@@ -253,6 +323,10 @@ namespace Atlas.Drawing.Serialization.BMP
                 {
                     colorTableIndex = sourceBytes[sourcePixelOffset] * 4u;
                 }
+                else if (sourceBitsPerPixel == 16)
+                {
+                    colorTableIndex = sourceBytes[sourcePixelOffset] * 4u;
+                }
 
                 destinationBytes[destinationPixelOffset] = colorTable[colorTableIndex++];     //R
                 destinationBytes[destinationPixelOffset + 1] = colorTable[colorTableIndex++]; //G
@@ -261,10 +335,26 @@ namespace Atlas.Drawing.Serialization.BMP
             }
             else
             {
-                destinationBytes[destinationPixelOffset] = sourceBytes[sourcePixelOffset];       //R
-                destinationBytes[destinationPixelOffset + 1] = sourceBytes[sourcePixelOffset + 1]; //G
-                destinationBytes[destinationPixelOffset + 2] = sourceBytes[sourcePixelOffset + 2]; //B
-                destinationBytes[destinationPixelOffset + 3] = 255;                              //A
+                byte r;
+                byte g;
+                byte b;
+                byte a = 255;
+
+                UInt32 pixel = BitConverter.ToUInt32(sourceBytes, (int)sourcePixelOffset);
+                b = (byte)(((pixel & info.RedChannelBitmask) >> RedChannelBitmaskOffset) / RedChannelBitmaskMaxValue * 255);
+                g = (byte)(((pixel & info.GreenChannelBitmask) >> GreenChannelBitmaskOffset) / GreenChannelBitmaskMaxValue * 255);
+                r = (byte)(((pixel & info.BlueChannelBitmask) >> BlueChannelBitmaskOffset) / BlueChannelBitmaskMaxValue * 255);
+
+                if (info.AlphaChannelBitmask > 0)
+                {
+                    a = (byte)((pixel & info.AlphaChannelBitmask) >> AlphaChannelBitmaskOffset);
+                }
+
+                // Set destination bytes
+                destinationBytes[destinationPixelOffset] = r;
+                destinationBytes[destinationPixelOffset + 1] = g;
+                destinationBytes[destinationPixelOffset + 2] = b;
+                destinationBytes[destinationPixelOffset + 3] = a;
             }
         }
     }

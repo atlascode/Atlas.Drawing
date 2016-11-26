@@ -19,10 +19,10 @@ namespace Atlas.Drawing.Serialization.BMP
         public UInt32 YPixelsPerMeter { get; set; }
         public UInt32 ColorsInColorTable { get; set; }
         public UInt32 ImportantColorCount { get; set; }
-        public UInt32 RedChannelBitmask { get; set; }
-        public UInt32 GreenChannelBitmask { get; set; }
-        public UInt32 BlueChannelBitmask { get; set; }
-        public UInt32 AlphaChannelBitmask { get; set; }
+        public Int32 RedChannelBitmask { get; set; }
+        public Int32 GreenChannelBitmask { get; set; }
+        public Int32 BlueChannelBitmask { get; set; }
+        public Int32 AlphaChannelBitmask { get; set; }
 
         public bool SupportsAlpha { get; private set; }
 
@@ -57,15 +57,15 @@ namespace Atlas.Drawing.Serialization.BMP
             ColorsInColorTable = BitConverter.ToUInt32(bytes, 14 + headerPosition); headerPosition += 4;
             ImportantColorCount = BitConverter.ToUInt32(bytes, 14 + headerPosition); headerPosition += 4;
 
-            if (headerPosition >= HeaderSize) return;
+            if (headerPosition >= HeaderSize && Compression != 3 && Compression != 4) return;
 
-            RedChannelBitmask = BitConverter.ToUInt32(bytes, 14 + headerPosition); headerPosition += 4;
-            GreenChannelBitmask = BitConverter.ToUInt32(bytes, 14 + headerPosition); headerPosition += 4;
-            BlueChannelBitmask = BitConverter.ToUInt32(bytes, 14 + headerPosition); headerPosition += 4;
+            RedChannelBitmask = BitConverter.ToInt32(bytes, 14 + headerPosition); headerPosition += 4;
+            GreenChannelBitmask = BitConverter.ToInt32(bytes, 14 + headerPosition); headerPosition += 4;
+            BlueChannelBitmask = BitConverter.ToInt32(bytes, 14 + headerPosition); headerPosition += 4;
 
-            if (headerPosition >= HeaderSize) return;
+            if (headerPosition >= HeaderSize && Compression != 4) return;
 
-            AlphaChannelBitmask = BitConverter.ToUInt32(bytes, 14 + headerPosition); headerPosition += 4;
+            AlphaChannelBitmask = BitConverter.ToInt32(bytes, 14 + headerPosition); headerPosition += 4;
             SupportsAlpha = true;
 
             if (headerPosition >= HeaderSize) return;
