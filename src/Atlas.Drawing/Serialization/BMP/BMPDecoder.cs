@@ -120,10 +120,7 @@ namespace Atlas.Drawing.Serialization.BMP
                             byte a = bytes[pixelArrayOffset + i++];
                             if (a == 0)
                             {
-                                if (currentIndex % (int)stride != 0)
-                                {
-                                    currentIndex += (int)stride - (currentIndex % (int)stride);
-                                }
+                                currentIndex += (int)stride - (currentIndex % (int)stride);
                             }
                             else  if(a == 1)
                             {
@@ -132,7 +129,9 @@ namespace Atlas.Drawing.Serialization.BMP
                             else if (a == 2)
                             {
                                 byte x = bytes[pixelArrayOffset + i++];
+                                currentIndex += x;
                                 byte y = bytes[pixelArrayOffset + i++];
+                                currentIndex += ((int)stride * y);
                             }
                             else
                             {
@@ -172,10 +171,7 @@ namespace Atlas.Drawing.Serialization.BMP
                             byte a = bytes[pixelArrayOffset + i++];
                             if (a == 0)
                             {
-                                if (currentIndex % (int)stride != 0)
-                                {
-                                    currentIndex += (int)stride - (currentIndex % (int)stride);
-                                }
+                                currentIndex += (int)(stride*2) - (currentIndex % (int)(stride*2));
                             }
                             else if (a == 1)
                             {
@@ -184,7 +180,9 @@ namespace Atlas.Drawing.Serialization.BMP
                             else if (a == 2)
                             {
                                 byte x = bytes[pixelArrayOffset + i++];
+                                currentIndex += x;
                                 byte y = bytes[pixelArrayOffset + i++];
+                                currentIndex += ((int)stride * y);
                             }
                             else
                             {
@@ -357,9 +355,9 @@ namespace Atlas.Drawing.Serialization.BMP
                 g = (byte)(((pixel & info.GreenChannelBitmask) >> GreenChannelBitmaskOffset) / GreenChannelBitmaskMaxValue * 255);
                 r = (byte)(((pixel & info.BlueChannelBitmask) >> BlueChannelBitmaskOffset) / BlueChannelBitmaskMaxValue * 255);
 
-                if (info.AlphaChannelBitmask > 0)
+                if (info.SupportsAlpha)
                 {
-                    a = (byte)((pixel & info.AlphaChannelBitmask) >> AlphaChannelBitmaskOffset);
+                    a = (byte)(((pixel & info.AlphaChannelBitmask) >> AlphaChannelBitmaskOffset) / AlphaChannelBitmaskMaxValue * 255);
                 }
 
                 // Set destination bytes

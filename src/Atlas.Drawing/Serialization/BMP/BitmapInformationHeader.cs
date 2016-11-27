@@ -57,13 +57,13 @@ namespace Atlas.Drawing.Serialization.BMP
             ColorsInColorTable = BitConverter.ToUInt32(bytes, 14 + headerPosition); headerPosition += 4;
             ImportantColorCount = BitConverter.ToUInt32(bytes, 14 + headerPosition); headerPosition += 4;
 
-            if (headerPosition >= HeaderSize && Compression != 3 && Compression != 4) return;
+            if (headerPosition >= HeaderSize && Compression != 3 && Compression != 6) return;
 
             RedChannelBitmask = BitConverter.ToInt32(bytes, 14 + headerPosition); headerPosition += 4;
             GreenChannelBitmask = BitConverter.ToInt32(bytes, 14 + headerPosition); headerPosition += 4;
             BlueChannelBitmask = BitConverter.ToInt32(bytes, 14 + headerPosition); headerPosition += 4;
 
-            if (headerPosition >= HeaderSize && Compression != 4) return;
+            if (headerPosition >= HeaderSize && Compression != 6) return;
 
             AlphaChannelBitmask = BitConverter.ToInt32(bytes, 14 + headerPosition); headerPosition += 4;
             SupportsAlpha = true;

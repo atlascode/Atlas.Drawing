@@ -13,18 +13,30 @@ namespace ExampleUsage
     {
         static void Main(string[] args)
         {
-            //foreach (var file in System.IO.Directory.GetFiles("..\\..\\bmpsuite-2.4\\q\\","*.bmp"))
-            //{
-            //    try
-            //    {
-            //        var bmp = Image.FromFile(file);
-            //        bmp.Save(System.IO.Path.GetFileNameWithoutExtension(file) + ".png", ImageFormat.Png);
-            //    }
-            //    catch (Exception)
-            //    {
+            foreach (var file in System.IO.Directory.GetFiles("..\\..\\bmpsuite-2.4\\g\\", "*.bmp"))
+            {
+                var bmp = Image.FromFile(file);
+                bmp.Save(System.IO.Path.GetFileNameWithoutExtension(file) + ".png", ImageFormat.Png);
+            }
 
-            //    }
-            //}
+            foreach (var file in System.IO.Directory.GetFiles("..\\..\\bmpsuite-2.4\\q\\", "*.bmp"))
+            {
+                var bmp = Image.FromFile(file);
+                bmp.Save(System.IO.Path.GetFileNameWithoutExtension(file) + ".png", ImageFormat.Png);
+            }
+
+            foreach (var file in System.IO.Directory.GetFiles("..\\..\\bmpsuite-2.4\\b\\", "*.bmp"))
+            {
+                try
+                {
+                    var bmp = Image.FromFile(file);
+                    bmp.Save(System.IO.Path.GetFileNameWithoutExtension(file) + ".png", ImageFormat.Png);
+                }
+                catch (Exception)
+                {
+                    
+                }
+            }
 
             //var bmp = Image.FromFile("..\\..\\bmpsuite-2.4\\g\\rgb24.bmp");
             //bmp.Save("rgb24.png", ImageFormat.Png);
@@ -91,8 +103,29 @@ namespace ExampleUsage
 
             //var bmp = Image.FromFile("..\\..\\bmpsuite-2.4\\q\\pal2.bmp");
             //bmp.Save("pal2.png", ImageFormat.Png);
-            var bmp = Image.FromFile("..\\..\\bmpsuite-2.4\\q\\pal2color.bmp");
-            bmp.Save("pal2.png", ImageFormat.Png);
+            //var bmp = Image.FromFile("..\\..\\bmpsuite-2.4\\q\\pal2color.bmp");
+            //bmp.Save("pal2.png", ImageFormat.Png);
+
+            //var bmp = Image.FromFile("..\\..\\bmpsuite-2.4\\q\\pal4rletrns.bmp");
+            //bmp.Save("pal4rletrns.png", ImageFormat.Png);
+            //var bmp2 = Image.FromFile("..\\..\\bmpsuite-2.4\\q\\pal4rlecut.bmp");
+            //bmp2.Save("pal4rlecut.png", ImageFormat.Png);
+            //var bmp3 = Image.FromFile("..\\..\\bmpsuite-2.4\\q\\pal8rletrns.bmp");
+            //bmp3.Save("pal8rletrns.png", ImageFormat.Png);
+            //var bmp4 = Image.FromFile("..\\..\\bmpsuite-2.4\\q\\pal8rlecut.bmp");
+            //bmp4.Save("pal8rlecut.png", ImageFormat.Png);
+
+            //var bmp = Image.FromFile("..\\..\\bmpsuite-2.4\\q\\rgba16-1924.bmp");
+            //bmp.Save("rgba16-1924.png", ImageFormat.Png);
+            //var bmp2 = Image.FromFile("..\\..\\bmpsuite-2.4\\q\\rgba16-4444.bmp");
+            //bmp2.Save("rgba16-4444.png", ImageFormat.Png);
+
+            //var bmp = Image.FromFile("..\\..\\bmpsuite-2.4\\q\\rgba32-61754.bmp");
+            //bmp.Save("rgba32-61754.png", ImageFormat.Png);
+            //var bmp2 = Image.FromFile("..\\..\\bmpsuite-2.4\\q\\rgba32-81284.bmp");
+            //bmp2.Save("rgba32-81284.png", ImageFormat.Png);
+            //var bmp3 = Image.FromFile("..\\..\\bmpsuite-2.4\\q\\rgba32abf.bmp");
+            //bmp3.Save("rgba32abf.png", ImageFormat.Png);
         }
     }
 }
