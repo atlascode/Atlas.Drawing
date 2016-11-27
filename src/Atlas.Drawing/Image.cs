@@ -36,15 +36,22 @@ namespace Atlas.Drawing
 
             var imageBytes = ms.ToArray();
 
-            string header = System.Text.Encoding.ASCII.GetString(imageBytes, 0, 2);
+            string header = System.Text.Encoding.ASCII.GetString(imageBytes, 0, 4);
 
             try
             {
-                if (header == "BM")
+                if (header.Substring(0,2) == "BM")
                 {
                     int width;
                     int height;
                     var bytes = new BMPDecoder().Decode(ref imageBytes, out width, out height);
+                    return new Image(bytes, width, height);
+                }
+                else if (imageBytes[0] == 0x89 && header.Substring(1) == "PNG")
+                {
+                    int width;
+                    int height;
+                    var bytes = new PNGDecoder().Decode(ref imageBytes, out width, out height);
                     return new Image(bytes, width, height);
                 }
             }

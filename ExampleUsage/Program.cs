@@ -13,30 +13,33 @@ namespace ExampleUsage
     {
         static void Main(string[] args)
         {
-            foreach (var file in System.IO.Directory.GetFiles("..\\..\\bmpsuite-2.4\\g\\", "*.bmp"))
-            {
-                var bmp = Image.FromFile(file);
-                bmp.Save(System.IO.Path.GetFileNameWithoutExtension(file) + ".png", ImageFormat.Png);
-            }
+            //foreach (var file in System.IO.Directory.GetFiles("..\\..\\bmpsuite-2.4\\g\\", "*.bmp"))
+            //{
+            //    var bmp = Image.FromFile(file);
+            //    bmp.Save(System.IO.Path.GetFileNameWithoutExtension(file) + ".png", ImageFormat.Png);
+            //}
 
-            foreach (var file in System.IO.Directory.GetFiles("..\\..\\bmpsuite-2.4\\q\\", "*.bmp"))
-            {
-                var bmp = Image.FromFile(file);
-                bmp.Save(System.IO.Path.GetFileNameWithoutExtension(file) + ".png", ImageFormat.Png);
-            }
+            //foreach (var file in System.IO.Directory.GetFiles("..\\..\\bmpsuite-2.4\\q\\", "*.bmp"))
+            //{
+            //    var bmp = Image.FromFile(file);
+            //    bmp.Save(System.IO.Path.GetFileNameWithoutExtension(file) + ".png", ImageFormat.Png);
+            //}
 
-            foreach (var file in System.IO.Directory.GetFiles("..\\..\\bmpsuite-2.4\\b\\", "*.bmp"))
-            {
-                try
-                {
-                    var bmp = Image.FromFile(file);
-                    bmp.Save(System.IO.Path.GetFileNameWithoutExtension(file) + ".png", ImageFormat.Png);
-                }
-                catch (Exception)
-                {
-                    
-                }
-            }
+            //foreach (var file in System.IO.Directory.GetFiles("..\\..\\bmpsuite-2.4\\b\\", "*.bmp"))
+            //{
+            //    try
+            //    {
+            //        var bmp = Image.FromFile(file);
+            //        bmp.Save(System.IO.Path.GetFileNameWithoutExtension(file) + ".png", ImageFormat.Png);
+            //    }
+            //    catch (Exception)
+            //    {
+
+            //    }
+            //}
+
+            var png = Image.FromFile("..\\..\\pngsuite\\basn2c08.png");
+            png.Save("basn2c08.png", ImageFormat.Png);
 
             //var bmp = Image.FromFile("..\\..\\bmpsuite-2.4\\g\\rgb24.bmp");
             //bmp.Save("rgb24.png", ImageFormat.Png);
