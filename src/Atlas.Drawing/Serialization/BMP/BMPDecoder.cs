@@ -313,6 +313,13 @@ namespace Atlas.Drawing.Serialization.BMP
                     var bits = new BitArray(new byte[] { sourceBytes[sourcePixelOffset] });
                     colorTableIndex = (bits[7-(int)(x % 8u)] ? 1u : 0) * 4u;
                 }
+                else if (sourceBitsPerPixel == 2)
+                {
+                    var bits = new BitArray(new byte[] { sourceBytes[sourcePixelOffset] });
+                    uint bit1 = bits[7 - (int)(x * 2 % 8u)] ? 1u : 0;
+                    uint bit2 = bits[7 - (int)(x * 2 % 8u + 1)] ? 1u : 0;
+                    colorTableIndex = ((bit1 * 2) + bit2) * 4u;
+                }
                 else if (sourceBitsPerPixel == 4)
                 {
                     if (x % 2 == 0)

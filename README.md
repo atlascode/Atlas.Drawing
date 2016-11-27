@@ -5,8 +5,8 @@ Pure .Net Core Implementation of the System.Drawing namespace
 
 | Format        | BitsPerPixel  | BitMasks | ColorPalettes | Transparency  | Compression |
 | ------------- |:-------------:|:--------:|:-------------:|:-------------:|:-----------:|
-| ~~BMP~~       | 1             | No       | Yes           | Yes           | No          |
-| ~~BMP~~       | 2             | No       | Yes           | Yes           | No          |
+| BMP           | 1             | No       | Yes           | Yes           | No          |
+| BMP           | 2             | No       | Yes           | Yes           | No          |
 | BMP           | 4             | No       | Yes           | Yes           | RLE4        |
 | BMP           | 8             | No       | Yes           | Yes           | RLE8        |
 | BMP           | 16            | Yes      | Yes           | Yes           | No          |

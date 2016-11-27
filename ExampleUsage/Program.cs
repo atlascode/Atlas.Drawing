@@ -13,18 +13,18 @@ namespace ExampleUsage
     {
         static void Main(string[] args)
         {
-            foreach (var file in System.IO.Directory.GetFiles("..\\..\\bmpsuite-2.4\\q\\","*.bmp"))
-            {
-                try
-                {
-                    var bmp = Image.FromFile(file);
-                    bmp.Save(System.IO.Path.GetFileNameWithoutExtension(file) + ".png", ImageFormat.Png);
-                }
-                catch (Exception)
-                {
-                    
-                }
-            }
+            //foreach (var file in System.IO.Directory.GetFiles("..\\..\\bmpsuite-2.4\\q\\","*.bmp"))
+            //{
+            //    try
+            //    {
+            //        var bmp = Image.FromFile(file);
+            //        bmp.Save(System.IO.Path.GetFileNameWithoutExtension(file) + ".png", ImageFormat.Png);
+            //    }
+            //    catch (Exception)
+            //    {
+
+            //    }
+            //}
 
             //var bmp = Image.FromFile("..\\..\\bmpsuite-2.4\\g\\rgb24.bmp");
             //bmp.Save("rgb24.png", ImageFormat.Png);
@@ -88,6 +88,11 @@ namespace ExampleUsage
             //bmp22.Save("pal1wb.png", ImageFormat.Png);
             //var bmp23 = Image.FromFile("..\\..\\bmpsuite-2.4\\g\\pal1bg.bmp");
             //bmp23.Save("pal1bg.png", ImageFormat.Png);
+
+            //var bmp = Image.FromFile("..\\..\\bmpsuite-2.4\\q\\pal2.bmp");
+            //bmp.Save("pal2.png", ImageFormat.Png);
+            var bmp = Image.FromFile("..\\..\\bmpsuite-2.4\\q\\pal2color.bmp");
+            bmp.Save("pal2.png", ImageFormat.Png);
         }
     }
 }
