@@ -55,25 +55,195 @@ namespace Atlas.Drawing.Serialization.PNG
             height = this.height;
 
             // add an alpha channel
+            int sourceStride = (width * 3) + 1;
+            int destinationStride = (width * 4);
             byte[] finalBytes = new byte[width * height * 4];
             if (!hasAlpha)
             {
                 for (int y = 0; y < height; y++)
                 {
+                    byte filterType = rawBytes[sourceStride * y];
                     for (int x = 0; x < width; x++)
                     {
-                        int sourceIndex = ((width * 3) * y) + (x * 3);
+                        int sourceIndex = (sourceStride * y) + (x * 3) + 1;
                         int destinationIndex = ((width * 4) * y) + (x * 4);
 
-                        finalBytes[destinationIndex++] = rawBytes[sourceIndex++];
-                        finalBytes[destinationIndex++] = rawBytes[sourceIndex++];
-                        finalBytes[destinationIndex++] = rawBytes[sourceIndex];
-                        finalBytes[destinationIndex] = 255;
+                        if (filterType == 0)
+                        {
+                            finalBytes[destinationIndex++] = rawBytes[sourceIndex++];
+                            finalBytes[destinationIndex++] = rawBytes[sourceIndex++];
+                            finalBytes[destinationIndex++] = rawBytes[sourceIndex];
+                            finalBytes[destinationIndex] = 255;
+                        }
+                        else if (filterType == 1) // SUB (pixel to the left)
+                        {
+                            byte a = 0;
+                            if(x != 0)
+                            {
+                                a = finalBytes[destinationIndex - 4];
+                            }
+
+                            finalBytes[destinationIndex++] = (byte)((rawBytes[sourceIndex++] + a) % 256);
+
+                            if (x != 0)
+                            {
+                                a = finalBytes[destinationIndex - 4];
+                            }
+
+                            finalBytes[destinationIndex++] = (byte)((rawBytes[sourceIndex++] + a) % 256);
+
+                            if (x != 0)
+                            {
+                                a = finalBytes[destinationIndex - 4];
+                            }
+
+                            finalBytes[destinationIndex++] = (byte)((rawBytes[sourceIndex++] + a) % 256);
+                            finalBytes[destinationIndex] = 255;
+                        }
+                        else if (filterType == 2) // UP (pixel above)
+                        {
+                            byte b = 0;
+                            if (x != 0)
+                            {
+                                b = finalBytes[destinationIndex - destinationStride];
+                            }
+
+                            finalBytes[destinationIndex++] = (byte)((rawBytes[sourceIndex++] + b) % 256);
+
+                            if (x != 0)
+                            {
+                                b = finalBytes[destinationIndex - destinationStride];
+                            }
+
+                            finalBytes[destinationIndex++] = (byte)((rawBytes[sourceIndex++] + b) % 256);
+
+                            if (x != 0)
+                            {
+                                b = finalBytes[destinationIndex - destinationStride];
+                            }
+
+                            finalBytes[destinationIndex++] = (byte)((rawBytes[sourceIndex++] + b) % 256);
+                            finalBytes[destinationIndex] = 255;
+                        }
+                        else if (filterType == 3) // Average
+                        {
+                            byte a = 0;
+                            byte b = 0;
+
+                            if (x != 0)
+                            {
+                                a = finalBytes[destinationIndex - 4];
+                            }
+                            if (y != 0)
+                            {
+                                b = finalBytes[destinationIndex - destinationStride];
+                            }
+
+                            finalBytes[destinationIndex++] = (byte)((rawBytes[sourceIndex++] + Math.Floor(a + b / 2m)) % 256);
+
+                            if (x != 0)
+                            {
+                                a = finalBytes[destinationIndex - 4];
+                            }
+                            if (y != 0)
+                            {
+                                b = finalBytes[destinationIndex - destinationStride];
+                            }
+                            
+                            finalBytes[destinationIndex++] = (byte)((rawBytes[sourceIndex++] + Math.Floor(a + b / 2m)) % 256);
+
+                            if (x != 0)
+                            {
+                                a = finalBytes[destinationIndex - 4];
+                            }
+                            if (y != 0)
+                            {
+                                b = finalBytes[destinationIndex - destinationStride];
+                            }
+
+                            finalBytes[destinationIndex++] = (byte)((rawBytes[sourceIndex++] + Math.Floor(a + b / 2m)) % 256);
+                            finalBytes[destinationIndex] = 255;
+                        }
+                        else if (filterType == 4) // Paeth
+                        {
+                            byte a = 0;
+                            byte b = 0;
+                            byte c = 0;
+
+                            if(x != 0)
+                            {
+                                a = finalBytes[destinationIndex - 4];
+                            }
+                            if (y != 0)
+                            {
+                                b = finalBytes[destinationIndex - destinationStride];
+                            }
+                            if(x != 0 && y != 0)
+                            {
+                                c = finalBytes[destinationIndex - 4 - destinationStride];
+                            }
+
+                            finalBytes[destinationIndex++] = (byte)((rawBytes[sourceIndex++] + PaethPredictor(a, b, c)) % 256);
+
+                            if (x != 0)
+                            {
+                                a = finalBytes[destinationIndex - 4];
+                            }
+                            if (y != 0)
+                            {
+                                b = finalBytes[destinationIndex - destinationStride];
+                            }
+                            if (x != 0 && y != 0)
+                            {
+                                c = finalBytes[destinationIndex - 4 - destinationStride];
+                            }
+
+                            finalBytes[destinationIndex++] = (byte)((rawBytes[sourceIndex++] + PaethPredictor(a, b, c)) % 256);
+
+                            if (x != 0)
+                            {
+                                a = finalBytes[destinationIndex - 4];
+                            }
+                            if (y != 0)
+                            {
+                                b = finalBytes[destinationIndex - destinationStride];
+                            }
+                            if (x != 0 && y != 0)
+                            {
+                                c = finalBytes[destinationIndex - 4 - destinationStride];
+                            }
+
+                            finalBytes[destinationIndex++] = (byte)((rawBytes[sourceIndex++] + PaethPredictor(a, b, c)) % 256);
+                            finalBytes[destinationIndex] = 255;
+                        }
                     }
                 }
             }
 
             return finalBytes;
+        }
+
+        private int PaethPredictor(int a, int b, int c)
+        {
+            // a = left, b = above, c = upper left
+            var p = a + b - c;        // initial estimate
+            var pa = Math.Abs(p - a);// distances to a, b, c
+            var pb = Math.Abs(p - b);
+            var pc = Math.Abs(p - c);
+            // return nearest of a,b,c,
+            // breaking ties in order a, b, c.
+            if (pa <= pb && pa <= pc)
+            {
+                return a;
+            }
+            else if (pb <= pc)
+            {
+                return b;
+            }
+            else
+            {
+                return c;
+            }
         }
 
         private void ReadHeader(ref byte[] bytes, int offset)
