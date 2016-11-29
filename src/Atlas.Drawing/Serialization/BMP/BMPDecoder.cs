@@ -273,7 +273,7 @@ namespace Atlas.Drawing.Serialization.BMP
             {
                 for (uint x = 0; x < info.Width; x++)
                 {
-                    ConvertPixel(ref decompressedBytes, pixelArrayOffset, stride, info.BitsPerPixel, x, y, ref standardBytes, destinationStride, useColorTable, info.Height < 0 ? (uint)Math.Abs(info.Height) - 1 : y * 2);
+                    ConvertPixel(ref decompressedBytes, pixelArrayOffset, stride, info.BitsPerPixel, x, y, ref standardBytes, destinationStride, useColorTable, info.Height >= 0 ? (uint)Math.Abs(info.Height) - 1 : y * 2);
                 }
             }
 
@@ -338,10 +338,17 @@ namespace Atlas.Drawing.Serialization.BMP
                     colorTableIndex = sourceBytes[sourcePixelOffset] * 4u;
                 }
 
-                destinationBytes[destinationPixelOffset] = colorTable[colorTableIndex++];     //R
+                destinationBytes[destinationPixelOffset + 2] = colorTable[colorTableIndex++];     //R
                 destinationBytes[destinationPixelOffset + 1] = colorTable[colorTableIndex++]; //G
-                destinationBytes[destinationPixelOffset + 2] = colorTable[colorTableIndex++]; //B
-                destinationBytes[destinationPixelOffset + 3] = colorTable[colorTableIndex++]; //A
+                destinationBytes[destinationPixelOffset + 0] = colorTable[colorTableIndex++]; //B
+
+                if (info.SupportsAlpha)
+                {
+                    destinationBytes[destinationPixelOffset + 3] = colorTable[colorTableIndex++]; //A
+                } else
+                {
+                    destinationBytes[destinationPixelOffset + 3] = 255;
+                }
             }
             else
             {
@@ -351,9 +358,9 @@ namespace Atlas.Drawing.Serialization.BMP
                 byte a = 255;
 
                 UInt32 pixel = BitConverter.ToUInt32(sourceBytes, (int)sourcePixelOffset);
-                b = (byte)(((pixel & info.RedChannelBitmask) >> RedChannelBitmaskOffset) / RedChannelBitmaskMaxValue * 255);
+                r = (byte)(((pixel & info.RedChannelBitmask) >> RedChannelBitmaskOffset) / RedChannelBitmaskMaxValue * 255);
                 g = (byte)(((pixel & info.GreenChannelBitmask) >> GreenChannelBitmaskOffset) / GreenChannelBitmaskMaxValue * 255);
-                r = (byte)(((pixel & info.BlueChannelBitmask) >> BlueChannelBitmaskOffset) / BlueChannelBitmaskMaxValue * 255);
+                b = (byte)(((pixel & info.BlueChannelBitmask) >> BlueChannelBitmaskOffset) / BlueChannelBitmaskMaxValue * 255);
 
                 if (info.SupportsAlpha)
                 {

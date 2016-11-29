@@ -63,12 +63,11 @@ namespace Atlas.Drawing.Serialization.PNG
             // Build IDAT chunk
             var IDAT = new EndianBinaryWriter(converter, idatms);
 
-            for (int i = height-1; i>=0;i--)
+            for (int y = 0; y < height; y++)
             {
 	            // no filter
 	            IDAT.Write((byte)0);
                 uint p;
-	            int j;
 	            if ( !transparent )
                 {
 	                //for(j=0;j<width;j++) {
@@ -78,9 +77,9 @@ namespace Atlas.Drawing.Serialization.PNG
                 }
                 else
                 {
-	                for(j=0;j<width;j++)
+	                for(int x = 0; x < width; x++)
                     {
-	                    p = getPixel32(img, width, j, i);
+	                    p = getPixel32(img, width, x, y);
                         IDAT.Write(p);
                         //IDAT.Write(((p & 0xFFFFFF) << 8) | (p >> 24)); //>>>
                     }
@@ -97,14 +96,14 @@ namespace Atlas.Drawing.Serialization.PNG
         private uint getPixel32(byte[] img, int width,int x, int y)
         {
             int startIndex = ((width * 4) * y) + (x * 4);
-            //B
-            uint value = img[startIndex + 2];
+            //R
+            uint value = img[startIndex];
             //G
             value <<= 8;
             value |= img[startIndex + 1];
-            //R
+            //B
             value <<= 8;
-            value |= img[startIndex];
+            value |= img[startIndex + 2];
             //A
             value <<= 8;
             value |= img[startIndex + 3];
@@ -132,7 +131,6 @@ namespace Atlas.Drawing.Serialization.PNG
 
                 var adler = new Adler32Computer();
                 adler.Update(uncompressedBytes, 0, uncompressedBytes.Length);
-
 
                 using (var compressor = new DeflateStream(compressStream, CompressionMode.Compress))
                 {

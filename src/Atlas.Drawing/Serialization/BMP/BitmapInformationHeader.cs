@@ -66,7 +66,7 @@ namespace Atlas.Drawing.Serialization.BMP
             if (headerPosition >= HeaderSize && Compression != 6) return;
 
             AlphaChannelBitmask = BitConverter.ToInt32(bytes, 14 + headerPosition); headerPosition += 4;
-            SupportsAlpha = true;
+            SupportsAlpha = AlphaChannelBitmask != 0;
 
             if (headerPosition >= HeaderSize) return;
 
