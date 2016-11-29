@@ -242,4 +242,4 @@ FakesAssemblies/
 # Manual Entry
 *.lock.json
 output/
-output/
+samples/**/output/
