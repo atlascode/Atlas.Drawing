@@ -33,8 +33,8 @@ namespace Atlas.Drawing.Serialization.PNG
             {
                 int chunkLength = EndianBitConverter.Big.ToInt32(bytes, byteIndex); byteIndex += 4;
                 string chunkType = System.Text.Encoding.ASCII.GetString(bytes, byteIndex, 4); byteIndex += 4;
-                
-                switch(chunkType)
+
+                switch (chunkType)
                 {
                     case "IHDR":
                         ReadHeader(ref bytes, byteIndex);
@@ -55,168 +55,179 @@ namespace Atlas.Drawing.Serialization.PNG
             height = this.height;
 
             // add an alpha channel
-            int sourceStride = (width * 3) + 1;
+            int bitsPerPixel = bitsPerChannel * ((hasColor ? 3 : 1) + (hasAlpha ? 1 : 0));
+            int bytesPerPixel = (bitsPerPixel / 8);
+            int sourceStride = ((width * bitsPerPixel)/8) + 1;
             int destinationStride = (width * 4);
-            byte[] finalBytes = new byte[width * height * 4];
-            if (!hasAlpha)
+            byte[] unfilteredBytes = new byte[((width * bitsPerPixel) / 8) * height];
+
+            int w = 0;
+            byte currentFilter = 0;
+            for (int i = 0, j = 0; i < rawBytes.Length; i++)
             {
-                for (int y = 0; y < height; y++)
+                if(w == sourceStride)
                 {
-                    byte filterType = rawBytes[sourceStride * y];
-                    for (int x = 0; x < width; x++)
+                    w = 0;
+                }
+                if(w == 0)
+                {
+                    currentFilter = rawBytes[i];
+                }
+                else
+                {
+                    if (currentFilter == 0)
                     {
-                        int sourceIndex = (sourceStride * y) + (x * 3) + 1;
-                        int destinationIndex = ((width * 4) * y) + (x * 4);
-
-                        if (filterType == 0)
-                        {
-                            finalBytes[destinationIndex++] = rawBytes[sourceIndex++];
-                            finalBytes[destinationIndex++] = rawBytes[sourceIndex++];
-                            finalBytes[destinationIndex++] = rawBytes[sourceIndex];
-                            finalBytes[destinationIndex] = 255;
-                        }
-                        else if (filterType == 1) // SUB (pixel to the left)
-                        {
-                            byte a = 0;
-                            if(x != 0)
-                            {
-                                a = finalBytes[destinationIndex - 4];
-                            }
-
-                            finalBytes[destinationIndex++] = (byte)((rawBytes[sourceIndex++] + a) % 256);
-
-                            if (x != 0)
-                            {
-                                a = finalBytes[destinationIndex - 4];
-                            }
-
-                            finalBytes[destinationIndex++] = (byte)((rawBytes[sourceIndex++] + a) % 256);
-
-                            if (x != 0)
-                            {
-                                a = finalBytes[destinationIndex - 4];
-                            }
-
-                            finalBytes[destinationIndex++] = (byte)((rawBytes[sourceIndex++] + a) % 256);
-                            finalBytes[destinationIndex] = 255;
-                        }
-                        else if (filterType == 2) // UP (pixel above)
-                        {
-                            byte b = 0;
-                            if (x != 0)
-                            {
-                                b = finalBytes[destinationIndex - destinationStride];
-                            }
-
-                            finalBytes[destinationIndex++] = (byte)((rawBytes[sourceIndex++] + b) % 256);
-
-                            if (x != 0)
-                            {
-                                b = finalBytes[destinationIndex - destinationStride];
-                            }
-
-                            finalBytes[destinationIndex++] = (byte)((rawBytes[sourceIndex++] + b) % 256);
-
-                            if (x != 0)
-                            {
-                                b = finalBytes[destinationIndex - destinationStride];
-                            }
-
-                            finalBytes[destinationIndex++] = (byte)((rawBytes[sourceIndex++] + b) % 256);
-                            finalBytes[destinationIndex] = 255;
-                        }
-                        else if (filterType == 3) // Average
-                        {
-                            byte a = 0;
-                            byte b = 0;
-
-                            if (x != 0)
-                            {
-                                a = finalBytes[destinationIndex - 4];
-                            }
-                            if (y != 0)
-                            {
-                                b = finalBytes[destinationIndex - destinationStride];
-                            }
-
-                            finalBytes[destinationIndex++] = (byte)((rawBytes[sourceIndex++] + Math.Floor(a + b / 2m)) % 256);
-
-                            if (x != 0)
-                            {
-                                a = finalBytes[destinationIndex - 4];
-                            }
-                            if (y != 0)
-                            {
-                                b = finalBytes[destinationIndex - destinationStride];
-                            }
-                            
-                            finalBytes[destinationIndex++] = (byte)((rawBytes[sourceIndex++] + Math.Floor(a + b / 2m)) % 256);
-
-                            if (x != 0)
-                            {
-                                a = finalBytes[destinationIndex - 4];
-                            }
-                            if (y != 0)
-                            {
-                                b = finalBytes[destinationIndex - destinationStride];
-                            }
-
-                            finalBytes[destinationIndex++] = (byte)((rawBytes[sourceIndex++] + Math.Floor(a + b / 2m)) % 256);
-                            finalBytes[destinationIndex] = 255;
-                        }
-                        else if (filterType == 4) // Paeth
-                        {
-                            byte a = 0;
-                            byte b = 0;
-                            byte c = 0;
-
-                            if(x != 0)
-                            {
-                                a = finalBytes[destinationIndex - 4];
-                            }
-                            if (y != 0)
-                            {
-                                b = finalBytes[destinationIndex - destinationStride];
-                            }
-                            if(x != 0 && y != 0)
-                            {
-                                c = finalBytes[destinationIndex - 4 - destinationStride];
-                            }
-
-                            finalBytes[destinationIndex++] = (byte)((rawBytes[sourceIndex++] + PaethPredictor(a, b, c)) % 256);
-
-                            if (x != 0)
-                            {
-                                a = finalBytes[destinationIndex - 4];
-                            }
-                            if (y != 0)
-                            {
-                                b = finalBytes[destinationIndex - destinationStride];
-                            }
-                            if (x != 0 && y != 0)
-                            {
-                                c = finalBytes[destinationIndex - 4 - destinationStride];
-                            }
-
-                            finalBytes[destinationIndex++] = (byte)((rawBytes[sourceIndex++] + PaethPredictor(a, b, c)) % 256);
-
-                            if (x != 0)
-                            {
-                                a = finalBytes[destinationIndex - 4];
-                            }
-                            if (y != 0)
-                            {
-                                b = finalBytes[destinationIndex - destinationStride];
-                            }
-                            if (x != 0 && y != 0)
-                            {
-                                c = finalBytes[destinationIndex - 4 - destinationStride];
-                            }
-
-                            finalBytes[destinationIndex++] = (byte)((rawBytes[sourceIndex++] + PaethPredictor(a, b, c)) % 256);
-                            finalBytes[destinationIndex] = 255;
-                        }
+                        unfilteredBytes[j++] = rawBytes[i];
                     }
+                    else if (currentFilter == 1) // SUB (pixel to the left)
+                    {
+                        byte a = 0;
+                        if (w > bytesPerPixel)
+                        {
+                            a = unfilteredBytes[j - bytesPerPixel];
+                        }
+
+                        unfilteredBytes[j++] = (byte)((rawBytes[i] + a) % 256);
+                    }
+                    else if (currentFilter == 2) // UP (pixel above)
+                    {
+                        byte b = 0;
+                        if (w > bytesPerPixel)
+                        {
+                            b = unfilteredBytes[j - (sourceStride - 1)];
+                        }
+
+                        unfilteredBytes[j++] = (byte)((rawBytes[i] + b) % 256);
+                    }
+                    else if (currentFilter == 3) // Average
+                    {
+                        byte a = 0;
+                        byte b = 0;
+
+                        if (w > bytesPerPixel)
+                        {
+                            a = unfilteredBytes[j - bytesPerPixel];
+                        }
+                        if (i > sourceStride)
+                        {
+                            b = unfilteredBytes[j - (sourceStride - 1)];
+                        }
+
+                        unfilteredBytes[j++] = (byte)((rawBytes[i] + Math.Floor(a + b / 2m)) % 256);
+                    }
+                    else if (currentFilter == 4) // Paeth
+                    {
+                        byte a = 0;
+                        byte b = 0;
+                        byte c = 0;
+
+                        if (w > bytesPerPixel)
+                        {
+                            a = unfilteredBytes[j - bytesPerPixel];
+                        }
+                        if (i > sourceStride)
+                        {
+                            b = unfilteredBytes[j - (sourceStride-1)];
+                        }
+                        if (w > bytesPerPixel && i > sourceStride)
+                        {
+                            c = unfilteredBytes[j - bytesPerPixel - (sourceStride-1)];
+                        }
+
+                        unfilteredBytes[j++] = (byte)((rawBytes[i] + PaethPredictor(a, b, c)) % 256);
+                    } else
+                    {
+                        // throw unknown filter type error
+                    }
+                }
+
+                w++;
+            }
+
+            var finalBytes = new byte[width * height * 4];
+
+            if (bitsPerPixel == 1)
+            {
+                for (int i = 0, j = 0; i < unfilteredBytes.Length;i++)
+                {
+                    var bits = new BitArray(new byte[] { unfilteredBytes[i] });
+                    for (int b = 7; b >= 0; b--)
+                    {
+                        finalBytes[j++] = (byte)(bits[b] ? 255 : 0);
+                        finalBytes[j++] = (byte)(bits[b] ? 255 : 0);
+                        finalBytes[j++] = (byte)(bits[b] ? 255 : 0);
+                        finalBytes[j++] = 255;
+                    }
+                }
+            }
+            else if (bitsPerPixel == 2)
+            {
+                for (int i = 0, j = 0; i < unfilteredBytes.Length; i++)
+                {
+                    var bits = new BitArray(new byte[] { unfilteredBytes[i] });
+                    for (int b = 7; b >= 0;b-=2)
+                    {
+                        int value = ((bits[b] ? 1 : 0) * 2) + (bits[b - 1] ? 1 : 0);
+                        byte color = (byte)(value * 85);
+                        finalBytes[j++] = color;
+                        finalBytes[j++] = color;
+                        finalBytes[j++] = color;
+                        finalBytes[j++] = 255;
+                    }
+                }
+            }
+            else if (bitsPerPixel == 4)
+            {
+                for (int i = 0, j = 0; i < unfilteredBytes.Length; i++)
+                {
+                    uint b = unfilteredBytes[i];
+                    byte color = (byte)(((b & 0xF0) >> 4) * 17);
+                    finalBytes[j++] = color;
+                    finalBytes[j++] = color;
+                    finalBytes[j++] = color;
+                    finalBytes[j++] = 255;
+
+                    byte color2 = (byte)((b & 0x0F) * 17);
+                    finalBytes[j++] = color2;
+                    finalBytes[j++] = color2;
+                    finalBytes[j++] = color2;
+                    finalBytes[j++] = 255;
+                }
+            }
+            else if (bitsPerPixel == 8)
+            {
+                for (int i = 0, j = 0; i < unfilteredBytes.Length; i++)
+                {
+                    byte color = unfilteredBytes[i];
+                    finalBytes[j++] = color;
+                    finalBytes[j++] = color;
+                    finalBytes[j++] = color;
+                    finalBytes[j++] = 255;
+                }
+            }
+            else if (bitsPerPixel == 16)
+            {
+                for (int i = 0, j = 0; i < unfilteredBytes.Length; i++)
+                {
+                    byte color = unfilteredBytes[i++];
+                    byte color2 = unfilteredBytes[i];
+
+                    byte color3 = (byte)(((int)(color << 8) + color2) / 256);
+
+                    finalBytes[j++] = color3;
+                    finalBytes[j++] = color3;
+                    finalBytes[j++] = color3;
+                    finalBytes[j++] = 255;
+                }
+            }
+            else if (bitsPerPixel == 24)
+            {
+                for (int i = 0, j = 0; i < unfilteredBytes.Length;)
+                {
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
                 }
             }
 

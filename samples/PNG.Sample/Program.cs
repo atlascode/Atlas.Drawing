@@ -13,26 +13,9 @@ namespace PNG.Sample
 
             foreach (var file in Directory.GetFiles(@"pngsuite", "*.png"))
             {
-                var png = Image.FromFile(file);
-                png.Save(Path.Combine("output", Path.GetFileNameWithoutExtension(file) + ".png"), ImageFormat.Png);
-            }
-
-            foreach (var file in Directory.GetFiles(@"pngsuite", "*.png"))
-            {
-                var png = Image.FromFile(file);
-                png.Save(Path.Combine("output", Path.GetFileNameWithoutExtension(file) + ".png"), ImageFormat.Png);
-            }
-
-            foreach (var file in Directory.GetFiles(@"pngsuite", "*.png"))
-            {
-                try
-                {
+                if (Path.GetFileName(file).StartsWith("basn0g")) {
                     var png = Image.FromFile(file);
                     png.Save(Path.Combine("output", Path.GetFileNameWithoutExtension(file) + ".png"), ImageFormat.Png);
-                }
-                catch (Exception)
-                {
-
                 }
             }
         }
