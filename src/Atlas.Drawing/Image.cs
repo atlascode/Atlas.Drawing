@@ -1,24 +1,47 @@
-﻿using Atlas.Drawing.Imaging;
+﻿using System;
+using System.IO;
+using Atlas.Drawing.Imaging;
 using Atlas.Drawing.Serialization.BMP;
 using Atlas.Drawing.Serialization.PNG;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Atlas.Drawing
 {
     public class Image
     {
+        private byte[] _rawBytes;
+
         public int Width { get; private set; }
         public int Height { get; private set; }
-        private byte[] rawBytes;
-        protected Image(byte[] rawBytes, int width, int height)
+
+        public void Save(string filename, ImageFormat format)
         {
-            this.rawBytes = rawBytes;
-            this.Width = width;
-            this.Height = height;
+            using (var stream = File.OpenWrite(filename))
+            {
+                Save(stream, format);
+            }
+        }
+        public void Save(Stream stream, ImageFormat format)
+        {
+            if (format == ImageFormat.Bmp)
+            {
+                var bmpEncoder = new BMPEncoder();
+                var bytes = bmpEncoder.Encode(_rawBytes, Width, Height);
+                stream.Write(bytes, 0, bytes.Length);
+            }
+            else if (format == ImageFormat.Png)
+            {
+                var pngEncoder = new PNGEncoder();
+                var bytes = pngEncoder.Encode(_rawBytes, Width, Height);
+                stream.Write(bytes, 0, bytes.Length);
+            }
+            else if (format == ImageFormat.MemoryBmp)
+            {
+                stream.Write(this._rawBytes, 0, this._rawBytes.Length);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
         }
 
         public static Image FromFile(string filename)
@@ -28,7 +51,6 @@ namespace Atlas.Drawing
                 return Image.FromStream(stream);
             }
         }
-
         public static Image FromStream(Stream stream)
         {
             var ms = new MemoryStream();
@@ -64,36 +86,11 @@ namespace Atlas.Drawing
             return null;
         }
 
-        public void Save(string filename, ImageFormat format)
+        protected Image(byte[] rawBytes, int width, int height)
         {
-            using (var stream = File.OpenWrite(filename))
-            {
-                Save(stream, format);
-            }
-        }
-
-        public void Save(Stream stream, ImageFormat format)
-        {
-            if(format == ImageFormat.Bmp)
-            {
-                var bmpEncoder = new BMPEncoder();
-                var bytes = bmpEncoder.Encode(rawBytes, Width, Height);
-                stream.Write(bytes, 0, bytes.Length);
-            }
-            else if (format == ImageFormat.Png)
-            {
-                var pngEncoder = new PNGEncoder();
-                var bytes = pngEncoder.Encode(rawBytes, Width, Height);
-                stream.Write(bytes, 0, bytes.Length);
-            }
-            else if(format == ImageFormat.MemoryBmp)
-            {
-                stream.Write(this.rawBytes, 0, this.rawBytes.Length);
-            }
-            else
-            {
-                throw new NotImplementedException();
-            }
+            this._rawBytes = rawBytes;
+            this.Width = width;
+            this.Height = height;
         }
     }
 }
