@@ -1,27 +1,23 @@
-﻿using MiscUtil.Conversion;
-using System;
+﻿using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
-using System.Linq;
-using System.Threading.Tasks;
+using MiscUtil.Conversion;
 
 namespace Atlas.Drawing.Serialization.PNG
 {
     public class PNGDecoder
     {
-        private int width;
-        private int height;
-        private byte bitsPerChannel;
-        private byte colorType;
-        private byte compressionMethod;
-        private byte filterMethod;
-        private byte interlaceMethod;
-
-        private bool useColorTable = false;
-        private bool hasColor = false;
-        private bool hasAlpha = false;
+        private int _width;
+        private int _height;
+        private byte _bitsPerChannel;
+        private byte _colorType;
+        private byte _compressionMethod;
+        private byte _filterMethod;
+        private byte _interlaceMethod;
+        private bool _useColorTable = false;
+        private bool _hasColor = false;
+        private bool _hasAlpha = false;
 
         public byte[] Decode(ref byte[] bytes, out int width, out int height)
         {
@@ -51,11 +47,11 @@ namespace Atlas.Drawing.Serialization.PNG
                 uint chunkCRC = EndianBitConverter.Big.ToUInt32(bytes, byteIndex); byteIndex += 4;
             }
 
-            width = this.width;
-            height = this.height;
+            width = _width;
+            height = _height;
 
             // add an alpha channel
-            int bitsPerPixel = bitsPerChannel * ((hasColor ? 3 : 1) + (hasAlpha ? 1 : 0));
+            int bitsPerPixel = _bitsPerChannel * ((_hasColor ? 3 : 1) + (_hasAlpha ? 1 : 0));
             int bytesPerPixel = (bitsPerPixel / 8);
             int sourceStride = ((width * bitsPerPixel)/8) + 1;
             int destinationStride = (width * 4);
@@ -256,23 +252,21 @@ namespace Atlas.Drawing.Serialization.PNG
                 return c;
             }
         }
-
         private void ReadHeader(ref byte[] bytes, int offset)
         {
-            width = EndianBitConverter.Big.ToInt32(bytes, offset);
-            height = EndianBitConverter.Big.ToInt32(bytes, offset + 4);
-            bitsPerChannel = bytes[offset + 8];
-            colorType = bytes[offset + 9];
-            compressionMethod = bytes[offset + 10];
-            filterMethod = bytes[offset + 11];
-            interlaceMethod = bytes[offset + 12];
+            _width = EndianBitConverter.Big.ToInt32(bytes, offset);
+            _height = EndianBitConverter.Big.ToInt32(bytes, offset + 4);
+            _bitsPerChannel = bytes[offset + 8];
+            _colorType = bytes[offset + 9];
+            _compressionMethod = bytes[offset + 10];
+            _filterMethod = bytes[offset + 11];
+            _interlaceMethod = bytes[offset + 12];
 
-            var colorTypeBits = new BitArray(new byte[] { colorType });
-            useColorTable = colorTypeBits[0];
-            hasColor = colorTypeBits[1];
-            hasAlpha = colorTypeBits[2];
+            var colorTypeBits = new BitArray(new byte[] { _colorType });
+            _useColorTable = colorTypeBits[0];
+            _hasColor = colorTypeBits[1];
+            _hasAlpha = colorTypeBits[2];
         }
-
         private byte[] UnpackData(ref byte[] bytes, int offset, int length)
         {
             using (var ms = new MemoryStream(bytes, offset + 2, length - 4)) // Skip 2 bytes for the zlib header and the last 4 bytes which is the adler crc
