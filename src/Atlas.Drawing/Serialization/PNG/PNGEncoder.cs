@@ -1,39 +1,16 @@
-﻿using MiscUtil.Conversion;
-using MiscUtil.IO;
-using System;
+﻿using System;
 using System.IO;
 using System.IO.Compression;
+using MiscUtil.Conversion;
+using MiscUtil.IO;
 
 namespace Atlas.Drawing.Serialization.PNG
 {
-    public class Adler32Computer
-    {
-        private int a = 1;
-        private int b = 0;
-
-        public int Checksum
-        {
-            get
-            {
-                return ((b * 65536) + a);
-            }
-        }
-
-        private static readonly int Modulus = 65521;
-
-        public void Update(byte[] data, int offset, int length)
-        {
-            for (int counter = 0; counter < length; ++counter)
-            {
-                a = (a + (data[offset + counter])) % Modulus;
-                b = (b + a) % Modulus;
-            }
-        }
-    }
-
-
     public class PNGEncoder
     {
+        private uint[] _crcTable;
+        private bool _crcTableComputed = false;
+
         public byte[] Encode(byte[] img, int width, int height)
         {
             var ms = new MemoryStream();
@@ -79,7 +56,7 @@ namespace Atlas.Drawing.Serialization.PNG
                 {
 	                for(int x = 0; x < width; x++)
                     {
-	                    p = getPixel32(img, width, x, y);
+	                    p = GetPixel32(img, width, x, y);
                         IDAT.Write(p);
                         //IDAT.Write(((p & 0xFFFFFF) << 8) | (p >> 24)); //>>>
                     }
@@ -93,7 +70,7 @@ namespace Atlas.Drawing.Serialization.PNG
 	        return ms.ToArray();
 	    }
 
-        private uint getPixel32(byte[] img, int width,int x, int y)
+        private uint GetPixel32(byte[] img, int width,int x, int y)
         {
             int startIndex = ((width * 4) * y) + (x * 4);
             //R
@@ -110,10 +87,53 @@ namespace Atlas.Drawing.Serialization.PNG
 
             return value;
         }
-	
-	    private uint[] crcTable;
-	    private bool crcTableComputed = false;
-
+        private void WriteChunk(EndianBinaryWriter png, uint type, byte[] data)
+        {
+            uint c;
+            if (!_crcTableComputed)
+            {
+                _crcTableComputed = true;
+                _crcTable = new uint[256];
+                for (uint n = 0; n < 256; n++)
+                {
+                    c = n;
+                    for (uint k = 0; k < 8; k++)
+                    {
+                        if ((c & 1u) == 1u)
+                        {
+                            c = 0xedb88320 ^ (c >> 1);
+                        }
+                        else
+                        {
+                            c = c >> 1;
+                        }
+                    }
+                    _crcTable[n] = c;
+                }
+            }
+            int len = 0;
+            if (data != null)
+            {
+                len = data.Length;
+            }
+            png.Write((uint)len);
+            var p = png.BaseStream.Position;
+            png.Write(type);
+            if (data != null)
+            {
+                png.Write(data);
+            }
+            long e = png.BaseStream.Position;
+            png.BaseStream.Position = p;
+            c = 0xffffffff;
+            for (int i = 0; i < (e - p); i++)
+            {
+                c = _crcTable[((c ^ png.BaseStream.ReadByte()) & 0xff)] ^ c >> 8;
+            }
+            c = c ^ 0xffffffff;
+            png.BaseStream.Position = e;
+            png.Write(c);
+        }
         private static byte[] Compress(Stream input)
         {
             input.Position = 0;
@@ -155,44 +175,5 @@ namespace Atlas.Drawing.Serialization.PNG
                 return zlibBytes;
             }
         }
-
-        private void WriteChunk(EndianBinaryWriter png, uint type, byte[] data)
-        {
-            uint c;
-            if (!crcTableComputed) {
-	            crcTableComputed = true;
-	            crcTable = new uint[256];
-	            for (uint n = 0; n< 256; n++) {
-	                c = n;
-	                for (uint k = 0; k < 8; k++) {
-	                    if ((c & 1u) == 1u) {
-	                        c = 0xedb88320 ^ (c >> 1);
-	                    } else {
-	                        c = c >> 1;
-	                    }
-	                }
-                    crcTable[n] = c;
-                }
-	        }
-	        int len = 0;
-	        if (data != null) {
-	            len = data.Length;
-	        }
-	        png.Write((uint)len);
-	        var p = png.BaseStream.Position;
-	        png.Write(type);
-	        if ( data != null ) {
-	            png.Write(data);
-	        }
-            long e = png.BaseStream.Position;
-	        png.BaseStream.Position = p;
-	        c = 0xffffffff;
-	        for (int i = 0; i< (e-p); i++) {
-	            c = crcTable[((c ^ png.BaseStream.ReadByte()) & 0xff)] ^ c >> 8;
-	        }
-	        c = c ^ 0xffffffff;
-	        png.BaseStream.Position = e;
-            png.Write(c);
-	    }
     }
 }
