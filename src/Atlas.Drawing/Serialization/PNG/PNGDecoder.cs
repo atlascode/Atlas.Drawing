@@ -2,7 +2,7 @@
 using System.Collections;
 using System.IO;
 using System.IO.Compression;
-using MiscUtil.Conversion;
+using Atlas.Drawing.Conversion;
 
 namespace Atlas.Drawing.Serialization.PNG
 {

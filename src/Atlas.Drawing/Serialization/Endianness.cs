@@ -1,5 +1,4 @@
-
-namespace MiscUtil.Conversion
+namespace Atlas.Drawing.Conversion
 {
 	/// <summary>
 	/// Endianness of a converter

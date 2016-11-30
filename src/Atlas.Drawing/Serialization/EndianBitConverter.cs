@@ -1,54 +1,31 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace MiscUtil.Conversion
+namespace Atlas.Drawing.Conversion
 {
 	/// <summary>
 	/// Equivalent of System.BitConverter, but with either endianness.
 	/// </summary>
 	public abstract class EndianBitConverter
 	{
-		#region Endianness of this converter
-		/// <summary>
-		/// Indicates the byte order ("endianess") in which data is converted using this class.
-		/// </summary>
-		/// <remarks>
-		/// Different computer architectures store data using different byte orders. "Big-endian"
-		/// means the most significant byte is on the left end of a word. "Little-endian" means the 
-		/// most significant byte is on the right end of a word.
-		/// </remarks>
-		/// <returns>true if this converter is little-endian, false otherwise.</returns>
-		public abstract bool IsLittleEndian();
+        private static LittleEndianBitConverter _littleEndianConverter = new LittleEndianBitConverter();
+        private static BigEndianBitConverter _bigEndianConverter = new BigEndianBitConverter();
 
-		/// <summary>
+        /// <summary>
 		/// Indicates the byte order ("endianess") in which data is converted using this class.
 		/// </summary>
 		public abstract Endianness Endianness { get; }
-		#endregion
-
-		#region Factory properties
-		static LittleEndianBitConverter little = new LittleEndianBitConverter();
-		/// <summary>
+        /// <summary>
 		/// Returns a little-endian bit converter instance. The same instance is
 		/// always returned.
 		/// </summary>
-		public static LittleEndianBitConverter Little
-		{
-			get { return little; }
-		}
+		public static LittleEndianBitConverter Little => _littleEndianConverter;
+        /// <summary>
+        /// Returns a big-endian bit converter instance. The same instance is
+        /// always returned.
+        /// </summary>
+        public static BigEndianBitConverter Big => _bigEndianConverter;
 
-		static BigEndianBitConverter big = new BigEndianBitConverter();
-		/// <summary>
-		/// Returns a big-endian bit converter instance. The same instance is
-		/// always returned.
-		/// </summary>
-		public static BigEndianBitConverter Big
-		{
-			get { return big; }
-		}
-		#endregion
-
-		#region Double/primitive conversions
 		/// <summary>
 		/// Converts the specified double-precision floating point number to a 
 		/// 64-bit signed integer. Note: the endianness of this converter does not
@@ -60,7 +37,6 @@ namespace MiscUtil.Conversion
 		{
 			return BitConverter.DoubleToInt64Bits(value);
 		}
-
 		/// <summary>
 		/// Converts the specified 64-bit signed integer to a double-precision 
 		/// floating point number. Note: the endianness of this converter does not
@@ -72,7 +48,6 @@ namespace MiscUtil.Conversion
 		{
 			return BitConverter.Int64BitsToDouble(value);
 		}
-
 		/// <summary>
 		/// Converts the specified single-precision floating point number to a 
 		/// 32-bit signed integer. Note: the endianness of this converter does not
@@ -84,7 +59,6 @@ namespace MiscUtil.Conversion
 		{
 			return new Int32SingleUnion(value).AsInt32;
 		}
-
 		/// <summary>
 		/// Converts the specified 32-bit signed integer to a single-precision floating point 
 		/// number. Note: the endianness of this converter does not
@@ -96,9 +70,6 @@ namespace MiscUtil.Conversion
 		{
 			return new Int32SingleUnion(value).AsSingle;
 		}
-		#endregion
-
-		#region To(PrimitiveType) conversions
 		/// <summary>
 		/// Returns a Boolean value converted from one byte at a specified position in a byte array.
 		/// </summary>
@@ -110,7 +81,6 @@ namespace MiscUtil.Conversion
 			CheckByteArgument(value, startIndex, 1);
 			return BitConverter.ToBoolean(value, startIndex);
 		}
-
 		/// <summary>
 		/// Returns a Unicode character converted from two bytes at a specified position in a byte array.
 		/// </summary>
@@ -121,7 +91,6 @@ namespace MiscUtil.Conversion
 		{
 			return unchecked((char) (CheckedFromBytes(value, startIndex, 2)));
 		}
-
 		/// <summary>
 		/// Returns a double-precision floating point number converted from eight bytes 
 		/// at a specified position in a byte array.
@@ -133,7 +102,6 @@ namespace MiscUtil.Conversion
 		{
 			return Int64BitsToDouble(ToInt64(value, startIndex));
 		}
-
 		/// <summary>
 		/// Returns a single-precision floating point number converted from four bytes 
 		/// at a specified position in a byte array.
@@ -145,7 +113,6 @@ namespace MiscUtil.Conversion
 		{
 			return Int32BitsToSingle(ToInt32(value, startIndex));
 		}
-
 		/// <summary>
 		/// Returns a 16-bit signed integer converted from two bytes at a specified position in a byte array.
 		/// </summary>
@@ -156,7 +123,6 @@ namespace MiscUtil.Conversion
 		{
 			return unchecked((short) (CheckedFromBytes(value, startIndex, 2)));
 		}
-
 		/// <summary>
 		/// Returns a 32-bit signed integer converted from four bytes at a specified position in a byte array.
 		/// </summary>
@@ -167,7 +133,6 @@ namespace MiscUtil.Conversion
 		{
 			return unchecked((int) (CheckedFromBytes(value, startIndex, 4)));
 		}
-
 		/// <summary>
 		/// Returns a 64-bit signed integer converted from eight bytes at a specified position in a byte array.
 		/// </summary>
@@ -178,7 +143,6 @@ namespace MiscUtil.Conversion
 		{
 			return CheckedFromBytes(value, startIndex, 8);
 		}
-
 		/// <summary>
 		/// Returns a 16-bit unsigned integer converted from two bytes at a specified position in a byte array.
 		/// </summary>
@@ -189,7 +153,6 @@ namespace MiscUtil.Conversion
 		{
 			return unchecked((ushort) (CheckedFromBytes(value, startIndex, 2)));
 		}
-
 		/// <summary>
 		/// Returns a 32-bit unsigned integer converted from four bytes at a specified position in a byte array.
 		/// </summary>
@@ -200,7 +163,6 @@ namespace MiscUtil.Conversion
 		{
 			return unchecked((uint) (CheckedFromBytes(value, startIndex, 4)));
 		}
-
 		/// <summary>
 		/// Returns a 64-bit unsigned integer converted from eight bytes at a specified position in a byte array.
 		/// </summary>
@@ -211,171 +173,55 @@ namespace MiscUtil.Conversion
 		{
 			return unchecked((ulong) (CheckedFromBytes(value, startIndex, 8)));
 		}
-
-		/// <summary>
-		/// Checks the given argument for validity.
-		/// </summary>
-		/// <param name="value">The byte array passed in</param>
-		/// <param name="startIndex">The start index passed in</param>
-		/// <param name="bytesRequired">The number of bytes required</param>
-		/// <exception cref="ArgumentNullException">value is a null reference</exception>
-		/// <exception cref="ArgumentOutOfRangeException">
-		/// startIndex is less than zero or greater than the length of value minus bytesRequired.
-		/// </exception>
-		static void CheckByteArgument(byte[] value, int startIndex, int bytesRequired)
-		{
-			if (value==null)
-			{
-				throw new ArgumentNullException("value");
-			}
-			if (startIndex < 0 || startIndex > value.Length-bytesRequired)
-			{
-				throw new ArgumentOutOfRangeException("startIndex");
-			}
-		}
-
         /// <summary>
-        /// Checks the arguments for validity before calling FromBytes
-        /// (which can therefore assume the arguments are valid).
-        /// </summary>
-        /// <param name="value">The bytes to convert after checking</param>
-        /// <param name="startIndex">The index of the first byte to convert</param>
-        /// <param name="bytesToConvert">The number of bytes to convert</param>
-        /// <returns></returns>
-		long CheckedFromBytes(byte[] value, int startIndex, int bytesToConvert)
-		{
-			CheckByteArgument(value, startIndex, bytesToConvert);
-			return FromBytes(value, startIndex, bytesToConvert);
-		}
-
-		/// <summary>
-		/// Convert the given number of bytes from the given array, from the given start
-		/// position, into a long, using the bytes as the least significant part of the long.
-		/// By the time this is called, the arguments have been checked for validity.
-		/// </summary>
-		/// <param name="value">The bytes to convert</param>
-		/// <param name="startIndex">The index of the first byte to convert</param>
-		/// <param name="bytesToConvert">The number of bytes to use in the conversion</param>
-		/// <returns>The converted number</returns>
-		protected abstract long FromBytes(byte[] value, int startIndex, int bytesToConvert);
-		#endregion
-
-		#region ToString conversions
-		/// <summary>
-		/// Returns a String converted from the elements of a byte array.
-		/// </summary>
-		/// <param name="value">An array of bytes.</param>
-		/// <remarks>All the elements of value are converted.</remarks>
-		/// <returns>
-		/// A String of hexadecimal pairs separated by hyphens, where each pair 
-		/// represents the corresponding element in value; for example, "7F-2C-4A".
-		/// </returns>
-		public static string ToString(byte[] value)
-		{
-			return BitConverter.ToString(value);
-		}
-
-		/// <summary>
-		/// Returns a String converted from the elements of a byte array starting at a specified array position.
-		/// </summary>
-		/// <param name="value">An array of bytes.</param>
-		/// <param name="startIndex">The starting position within value.</param>
-		/// <remarks>The elements from array position startIndex to the end of the array are converted.</remarks>
-		/// <returns>
-		/// A String of hexadecimal pairs separated by hyphens, where each pair 
-		/// represents the corresponding element in value; for example, "7F-2C-4A".
-		/// </returns>
-		public static string ToString(byte[] value, int startIndex)
-		{
-			return BitConverter.ToString(value, startIndex);
-		}
-
-		/// <summary>
-		/// Returns a String converted from a specified number of bytes at a specified position in a byte array.
-		/// </summary>
-		/// <param name="value">An array of bytes.</param>
-		/// <param name="startIndex">The starting position within value.</param>
-		/// <param name="length">The number of bytes to convert.</param>
-		/// <remarks>The length elements from array position startIndex are converted.</remarks>
-		/// <returns>
-		/// A String of hexadecimal pairs separated by hyphens, where each pair 
-		/// represents the corresponding element in value; for example, "7F-2C-4A".
-		/// </returns>
-		public static string ToString(byte[] value, int startIndex, int length)
-		{
-			return BitConverter.ToString(value, startIndex, length);
-		}
-		#endregion
-
-		#region	Decimal conversions
-		/// <summary>
 		/// Returns a decimal value converted from sixteen bytes 
 		/// at a specified position in a byte array.
 		/// </summary>
 		/// <param name="value">An array of bytes.</param>
 		/// <param name="startIndex">The starting position within value.</param>
 		/// <returns>A decimal  formed by sixteen bytes beginning at startIndex.</returns>
-		public decimal ToDecimal (byte[] value, int startIndex)
-		{
-			// HACK: This always assumes four parts, each in their own endianness,
-			// starting with the first part at the start of the byte array.
-			// On the other hand, there's no real format specified...
-			int[] parts = new int[4];
-			for (int i=0; i < 4; i++)
-			{
-				parts[i] = ToInt32(value, startIndex+i*4);
-			}
-			return new Decimal(parts);
-		}
-
-		/// <summary>
-		/// Returns the specified decimal value as an array of bytes.
-		/// </summary>
-		/// <param name="value">The number to convert.</param>
-		/// <returns>An array of bytes with length 16.</returns>
-		public byte[] GetBytes(decimal value)
-		{
-			byte[] bytes = new byte[16];
-			int[] parts = decimal.GetBits(value);
-			for (int i=0; i < 4; i++)
-			{
-				CopyBytesImpl(parts[i], 4, bytes, i*4);
-			}
-			return bytes;
-		}
-
-		/// <summary>
-		/// Copies the specified decimal value into the specified byte array,
-		/// beginning at the specified index.
-		/// </summary>
-		/// <param name="value">A character to convert.</param>
-		/// <param name="buffer">The byte array to copy the bytes into</param>
-		/// <param name="index">The first index into the array to copy the bytes into</param>
-		public void CopyBytes(decimal value, byte[] buffer, int index)
-		{
-			int[] parts = decimal.GetBits(value);
-			for (int i=0; i < 4; i++)
-			{
-				CopyBytesImpl(parts[i], 4, buffer, i*4+index);
-			}
-		}
-		#endregion
-
-		#region GetBytes conversions
-		/// <summary>
-		/// Returns an array with the given number of bytes formed
-		/// from the least significant bytes of the specified value.
-		/// This is used to implement the other GetBytes methods.
-		/// </summary>
-		/// <param name="value">The value to get bytes for</param>
-		/// <param name="bytes">The number of significant bytes to return</param>
-		byte[] GetBytes(long value, int bytes)
-		{
-			byte[] buffer = new byte[bytes];
-			CopyBytes(value, bytes, buffer, 0);
-			return buffer;
-		}
-
+		public decimal ToDecimal(byte[] value, int startIndex)
+        {
+            // HACK: This always assumes four parts, each in their own endianness,
+            // starting with the first part at the start of the byte array.
+            // On the other hand, there's no real format specified...
+            int[] parts = new int[4];
+            for (int i = 0; i < 4; i++)
+            {
+                parts[i] = ToInt32(value, startIndex + i * 4);
+            }
+            return new Decimal(parts);
+        }
+        /// <summary>
+        /// Returns the specified decimal value as an array of bytes.
+        /// </summary>
+        /// <param name="value">The number to convert.</param>
+        /// <returns>An array of bytes with length 16.</returns>
+        public byte[] GetBytes(decimal value)
+        {
+            byte[] bytes = new byte[16];
+            int[] parts = decimal.GetBits(value);
+            for (int i = 0; i < 4; i++)
+            {
+                CopyBytesImpl(parts[i], 4, bytes, i * 4);
+            }
+            return bytes;
+        }
+        /// <summary>
+        /// Copies the specified decimal value into the specified byte array,
+        /// beginning at the specified index.
+        /// </summary>
+        /// <param name="value">A character to convert.</param>
+        /// <param name="buffer">The byte array to copy the bytes into</param>
+        /// <param name="index">The first index into the array to copy the bytes into</param>
+        public void CopyBytes(decimal value, byte[] buffer, int index)
+        {
+            int[] parts = decimal.GetBits(value);
+            for (int i = 0; i < 4; i++)
+            {
+                CopyBytesImpl(parts[i], 4, buffer, i * 4 + index);
+            }
+        }
 		/// <summary>
 		/// Returns the specified Boolean value as an array of bytes.
 		/// </summary>
@@ -385,7 +231,6 @@ namespace MiscUtil.Conversion
 		{
 			return BitConverter.GetBytes(value);
 		}
-
 		/// <summary>
 		/// Returns the specified Unicode character value as an array of bytes.
 		/// </summary>
@@ -395,7 +240,6 @@ namespace MiscUtil.Conversion
 		{
 			return GetBytes(value, 2);
 		}
-
 		/// <summary>
 		/// Returns the specified double-precision floating point value as an array of bytes.
 		/// </summary>
@@ -405,7 +249,6 @@ namespace MiscUtil.Conversion
 		{
 			return GetBytes(DoubleToInt64Bits(value), 8);
 		}
-		
 		/// <summary>
 		/// Returns the specified 16-bit signed integer value as an array of bytes.
 		/// </summary>
@@ -415,7 +258,6 @@ namespace MiscUtil.Conversion
 		{
 			return GetBytes(value, 2);
 		}
-
 		/// <summary>
 		/// Returns the specified 32-bit signed integer value as an array of bytes.
 		/// </summary>
@@ -425,7 +267,6 @@ namespace MiscUtil.Conversion
 		{
 			return GetBytes(value, 4);
 		}
-
 		/// <summary>
 		/// Returns the specified 64-bit signed integer value as an array of bytes.
 		/// </summary>
@@ -435,7 +276,6 @@ namespace MiscUtil.Conversion
 		{
 			return GetBytes(value, 8);
 		}
-
 		/// <summary>
 		/// Returns the specified single-precision floating point value as an array of bytes.
 		/// </summary>
@@ -445,7 +285,6 @@ namespace MiscUtil.Conversion
 		{
 			return GetBytes(SingleToInt32Bits(value), 4);
 		}
-
 		/// <summary>
 		/// Returns the specified 16-bit unsigned integer value as an array of bytes.
 		/// </summary>
@@ -455,7 +294,6 @@ namespace MiscUtil.Conversion
 		{
 			return GetBytes(value, 2);
 		}
-
 		/// <summary>
 		/// Returns the specified 32-bit unsigned integer value as an array of bytes.
 		/// </summary>
@@ -465,7 +303,6 @@ namespace MiscUtil.Conversion
 		{
 			return GetBytes(value, 4);
 		}
-
 		/// <summary>
 		/// Returns the specified 64-bit unsigned integer value as an array of bytes.
 		/// </summary>
@@ -475,21 +312,128 @@ namespace MiscUtil.Conversion
 		{
 			return GetBytes(unchecked((long)value), 8);
 		}
-
-		#endregion
-
-		#region CopyBytes conversions
-		/// <summary>
-		/// Copies the given number of bytes from the least-specific
-		/// end of the specified value into the specified byte array, beginning
-		/// at the specified index.
-		/// This is used to implement the other CopyBytes methods.
+        /// <summary>
+		/// Copies the specified Boolean value into the specified byte array,
+		/// beginning at the specified index.
 		/// </summary>
-		/// <param name="value">The value to copy bytes for</param>
-		/// <param name="bytes">The number of significant bytes to copy</param>
+		/// <param name="value">A Boolean value.</param>
 		/// <param name="buffer">The byte array to copy the bytes into</param>
 		/// <param name="index">The first index into the array to copy the bytes into</param>
-		void CopyBytes(long value, int bytes, byte[] buffer, int index)
+		public void CopyBytes(bool value, byte[] buffer, int index)
+        {
+            CopyBytes(value ? 1 : 0, 1, buffer, index);
+        }
+        /// <summary>
+        /// Copies the specified Unicode character value into the specified byte array,
+        /// beginning at the specified index.
+        /// </summary>
+        /// <param name="value">A character to convert.</param>
+        /// <param name="buffer">The byte array to copy the bytes into</param>
+        /// <param name="index">The first index into the array to copy the bytes into</param>
+        public void CopyBytes(char value, byte[] buffer, int index)
+        {
+            CopyBytes(value, 2, buffer, index);
+        }
+        /// <summary>
+        /// Copies the specified double-precision floating point value into the specified byte array,
+        /// beginning at the specified index.
+        /// </summary>
+        /// <param name="value">The number to convert.</param>
+        /// <param name="buffer">The byte array to copy the bytes into</param>
+        /// <param name="index">The first index into the array to copy the bytes into</param>
+        public void CopyBytes(double value, byte[] buffer, int index)
+        {
+            CopyBytes(DoubleToInt64Bits(value), 8, buffer, index);
+        }
+        /// <summary>
+        /// Copies the specified 16-bit signed integer value into the specified byte array,
+        /// beginning at the specified index.
+        /// </summary>
+        /// <param name="value">The number to convert.</param>
+        /// <param name="buffer">The byte array to copy the bytes into</param>
+        /// <param name="index">The first index into the array to copy the bytes into</param>
+        public void CopyBytes(short value, byte[] buffer, int index)
+        {
+            CopyBytes(value, 2, buffer, index);
+        }
+        /// <summary>
+        /// Copies the specified 32-bit signed integer value into the specified byte array,
+        /// beginning at the specified index.
+        /// </summary>
+        /// <param name="value">The number to convert.</param>
+        /// <param name="buffer">The byte array to copy the bytes into</param>
+        /// <param name="index">The first index into the array to copy the bytes into</param>
+        public void CopyBytes(int value, byte[] buffer, int index)
+        {
+            CopyBytes(value, 4, buffer, index);
+        }
+        /// <summary>
+        /// Copies the specified 64-bit signed integer value into the specified byte array,
+        /// beginning at the specified index.
+        /// </summary>
+        /// <param name="value">The number to convert.</param>
+        /// <param name="buffer">The byte array to copy the bytes into</param>
+        /// <param name="index">The first index into the array to copy the bytes into</param>
+        public void CopyBytes(long value, byte[] buffer, int index)
+        {
+            CopyBytes(value, 8, buffer, index);
+        }
+        /// <summary>
+        /// Copies the specified single-precision floating point value into the specified byte array,
+        /// beginning at the specified index.
+        /// </summary>
+        /// <param name="value">The number to convert.</param>
+        /// <param name="buffer">The byte array to copy the bytes into</param>
+        /// <param name="index">The first index into the array to copy the bytes into</param>
+        public void CopyBytes(float value, byte[] buffer, int index)
+        {
+            CopyBytes(SingleToInt32Bits(value), 4, buffer, index);
+        }
+        /// <summary>
+        /// Copies the specified 16-bit unsigned integer value into the specified byte array,
+        /// beginning at the specified index.
+        /// </summary>
+        /// <param name="value">The number to convert.</param>
+        /// <param name="buffer">The byte array to copy the bytes into</param>
+        /// <param name="index">The first index into the array to copy the bytes into</param>
+        public void CopyBytes(ushort value, byte[] buffer, int index)
+        {
+            CopyBytes(value, 2, buffer, index);
+        }
+        /// <summary>
+        /// Copies the specified 32-bit unsigned integer value into the specified byte array,
+        /// beginning at the specified index.
+        /// </summary>
+        /// <param name="value">The number to convert.</param>
+        /// <param name="buffer">The byte array to copy the bytes into</param>
+        /// <param name="index">The first index into the array to copy the bytes into</param>
+        public void CopyBytes(uint value, byte[] buffer, int index)
+        {
+            CopyBytes(value, 4, buffer, index);
+        }
+        /// <summary>
+        /// Copies the specified 64-bit unsigned integer value into the specified byte array,
+        /// beginning at the specified index.
+        /// </summary>
+        /// <param name="value">The number to convert.</param>
+        /// <param name="buffer">The byte array to copy the bytes into</param>
+        /// <param name="index">The first index into the array to copy the bytes into</param>
+        public void CopyBytes(ulong value, byte[] buffer, int index)
+        {
+            CopyBytes(unchecked((long)value), 8, buffer, index);
+        }
+        
+        /// <summary>
+        /// Copies the given number of bytes from the least-specific
+        /// end of the specified value into the specified byte array, beginning
+        /// at the specified index.
+        /// This is used to implement the other CopyBytes methods.
+        /// </summary>
+        /// <param name="value">The value to copy bytes for</param>
+        /// <param name="bytes">The number of significant bytes to copy</param>
+        /// <param name="buffer">The byte array to copy the bytes into</param>
+        /// <param name="index">The first index into the array to copy the bytes into</param>
+        protected void CopyBytes(long value, int bytes, byte[] buffer, int index)
 		{
 			if (buffer==null)
 			{
@@ -501,148 +445,137 @@ namespace MiscUtil.Conversion
 			}
 			CopyBytesImpl(value, bytes, buffer, index);
 		}
+        /// <summary>
+        /// Returns an array with the given number of bytes formed
+        /// from the least significant bytes of the specified value.
+        /// This is used to implement the other GetBytes methods.
+        /// </summary>
+        /// <param name="value">The value to get bytes for</param>
+        /// <param name="bytes">The number of significant bytes to return</param>
+        protected byte[] GetBytes(long value, int bytes)
+        {
+            byte[] buffer = new byte[bytes];
+            CopyBytes(value, bytes, buffer, 0);
+            return buffer;
+        }
+        /// <summary>
+        /// Checks the arguments for validity before calling FromBytes
+        /// (which can therefore assume the arguments are valid).
+        /// </summary>
+        /// <param name="value">The bytes to convert after checking</param>
+        /// <param name="startIndex">The index of the first byte to convert</param>
+        /// <param name="bytesToConvert">The number of bytes to convert</param>
+        /// <returns></returns>
+		protected long CheckedFromBytes(byte[] value, int startIndex, int bytesToConvert)
+        {
+            CheckByteArgument(value, startIndex, bytesToConvert);
+            return FromBytes(value, startIndex, bytesToConvert);
+        }
 
-		/// <summary>
-		/// Copies the given number of bytes from the least-specific
-		/// end of the specified value into the specified byte array, beginning
-		/// at the specified index.
-		/// This must be implemented in concrete derived classes, but the implementation
-		/// may assume that the value will fit into the buffer.
-		/// </summary>
-		/// <param name="value">The value to copy bytes for</param>
-		/// <param name="bytes">The number of significant bytes to copy</param>
-		/// <param name="buffer">The byte array to copy the bytes into</param>
-		/// <param name="index">The first index into the array to copy the bytes into</param>
-		protected abstract void CopyBytesImpl(long value, int bytes, byte[] buffer, int index);
+        /// <summary>
+        /// Indicates the byte order ("endianess") in which data is converted using this class.
+        /// </summary>
+        /// <remarks>
+        /// Different computer architectures store data using different byte orders. "Big-endian"
+        /// means the most significant byte is on the left end of a word. "Little-endian" means the 
+        /// most significant byte is on the right end of a word.
+        /// </remarks>
+        /// <returns>true if this converter is little-endian, false otherwise.</returns>
+        public abstract bool IsLittleEndian();
 
-		/// <summary>
-		/// Copies the specified Boolean value into the specified byte array,
-		/// beginning at the specified index.
-		/// </summary>
-		/// <param name="value">A Boolean value.</param>
-		/// <param name="buffer">The byte array to copy the bytes into</param>
-		/// <param name="index">The first index into the array to copy the bytes into</param>
-		public void CopyBytes(bool value, byte[] buffer, int index)
-		{
-			CopyBytes(value ? 1 : 0, 1, buffer, index);
-		}
+        /// <summary>
+        /// Convert the given number of bytes from the given array, from the given start
+        /// position, into a long, using the bytes as the least significant part of the long.
+        /// By the time this is called, the arguments have been checked for validity.
+        /// </summary>
+        /// <param name="value">The bytes to convert</param>
+        /// <param name="startIndex">The index of the first byte to convert</param>
+        /// <param name="bytesToConvert">The number of bytes to use in the conversion</param>
+        /// <returns>The converted number</returns>
+        protected abstract long FromBytes(byte[] value, int startIndex, int bytesToConvert);
+        /// <summary>
+        /// Copies the given number of bytes from the least-specific
+        /// end of the specified value into the specified byte array, beginning
+        /// at the specified index.
+        /// This must be implemented in concrete derived classes, but the implementation
+        /// may assume that the value will fit into the buffer.
+        /// </summary>
+        /// <param name="value">The value to copy bytes for</param>
+        /// <param name="bytes">The number of significant bytes to copy</param>
+        /// <param name="buffer">The byte array to copy the bytes into</param>
+        /// <param name="index">The first index into the array to copy the bytes into</param>
+        protected abstract void CopyBytesImpl(long value, int bytes, byte[] buffer, int index);
 
-		/// <summary>
-		/// Copies the specified Unicode character value into the specified byte array,
-		/// beginning at the specified index.
+        /// <summary>
+		/// Returns a String converted from the elements of a byte array.
 		/// </summary>
-		/// <param name="value">A character to convert.</param>
-		/// <param name="buffer">The byte array to copy the bytes into</param>
-		/// <param name="index">The first index into the array to copy the bytes into</param>
-		public void CopyBytes(char value, byte[] buffer, int index)
-		{
-			CopyBytes(value, 2, buffer, index);
-		}
+		/// <param name="value">An array of bytes.</param>
+		/// <remarks>All the elements of value are converted.</remarks>
+		/// <returns>
+		/// A String of hexadecimal pairs separated by hyphens, where each pair 
+		/// represents the corresponding element in value; for example, "7F-2C-4A".
+		/// </returns>
+		public static string ToString(byte[] value)
+        {
+            return BitConverter.ToString(value);
+        }
+        /// <summary>
+        /// Returns a String converted from the elements of a byte array starting at a specified array position.
+        /// </summary>
+        /// <param name="value">An array of bytes.</param>
+        /// <param name="startIndex">The starting position within value.</param>
+        /// <remarks>The elements from array position startIndex to the end of the array are converted.</remarks>
+        /// <returns>
+        /// A String of hexadecimal pairs separated by hyphens, where each pair 
+        /// represents the corresponding element in value; for example, "7F-2C-4A".
+        /// </returns>
+        public static string ToString(byte[] value, int startIndex)
+        {
+            return BitConverter.ToString(value, startIndex);
+        }
+        /// <summary>
+        /// Returns a String converted from a specified number of bytes at a specified position in a byte array.
+        /// </summary>
+        /// <param name="value">An array of bytes.</param>
+        /// <param name="startIndex">The starting position within value.</param>
+        /// <param name="length">The number of bytes to convert.</param>
+        /// <remarks>The length elements from array position startIndex are converted.</remarks>
+        /// <returns>
+        /// A String of hexadecimal pairs separated by hyphens, where each pair 
+        /// represents the corresponding element in value; for example, "7F-2C-4A".
+        /// </returns>
+        public static string ToString(byte[] value, int startIndex, int length)
+        {
+            return BitConverter.ToString(value, startIndex, length);
+        }
 
-		/// <summary>
-		/// Copies the specified double-precision floating point value into the specified byte array,
-		/// beginning at the specified index.
-		/// </summary>
-		/// <param name="value">The number to convert.</param>
-		/// <param name="buffer">The byte array to copy the bytes into</param>
-		/// <param name="index">The first index into the array to copy the bytes into</param>
-		public void CopyBytes(double value, byte[] buffer, int index)
-		{
-			CopyBytes(DoubleToInt64Bits(value), 8, buffer, index);
-		}
-		
-		/// <summary>
-		/// Copies the specified 16-bit signed integer value into the specified byte array,
-		/// beginning at the specified index.
-		/// </summary>
-		/// <param name="value">The number to convert.</param>
-		/// <param name="buffer">The byte array to copy the bytes into</param>
-		/// <param name="index">The first index into the array to copy the bytes into</param>
-		public void CopyBytes(short value, byte[] buffer, int index)
-		{
-			CopyBytes(value, 2, buffer, index);
-		}
+        /// <summary>
+        /// Checks the given argument for validity.
+        /// </summary>
+        /// <param name="value">The byte array passed in</param>
+        /// <param name="startIndex">The start index passed in</param>
+        /// <param name="bytesRequired">The number of bytes required</param>
+        /// <exception cref="ArgumentNullException">value is a null reference</exception>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// startIndex is less than zero or greater than the length of value minus bytesRequired.
+        /// </exception>
+        protected static void CheckByteArgument(byte[] value, int startIndex, int bytesRequired)
+        {
+            if (value == null)
+            {
+                throw new ArgumentNullException("value");
+            }
+            if (startIndex < 0 || startIndex > value.Length - bytesRequired)
+            {
+                throw new ArgumentOutOfRangeException("startIndex");
+            }
+        }
 
-		/// <summary>
-		/// Copies the specified 32-bit signed integer value into the specified byte array,
-		/// beginning at the specified index.
-		/// </summary>
-		/// <param name="value">The number to convert.</param>
-		/// <param name="buffer">The byte array to copy the bytes into</param>
-		/// <param name="index">The first index into the array to copy the bytes into</param>
-		public void CopyBytes(int value, byte[] buffer, int index)
-		{
-			CopyBytes(value, 4, buffer, index);
-		}
-
-		/// <summary>
-		/// Copies the specified 64-bit signed integer value into the specified byte array,
-		/// beginning at the specified index.
-		/// </summary>
-		/// <param name="value">The number to convert.</param>
-		/// <param name="buffer">The byte array to copy the bytes into</param>
-		/// <param name="index">The first index into the array to copy the bytes into</param>
-		public void CopyBytes(long value, byte[] buffer, int index)
-		{
-			CopyBytes(value, 8, buffer, index);
-		}
-
-		/// <summary>
-		/// Copies the specified single-precision floating point value into the specified byte array,
-		/// beginning at the specified index.
-		/// </summary>
-		/// <param name="value">The number to convert.</param>
-		/// <param name="buffer">The byte array to copy the bytes into</param>
-		/// <param name="index">The first index into the array to copy the bytes into</param>
-		public void CopyBytes(float value, byte[] buffer, int index)
-		{
-			CopyBytes(SingleToInt32Bits(value), 4, buffer, index);
-		}
-
-		/// <summary>
-		/// Copies the specified 16-bit unsigned integer value into the specified byte array,
-		/// beginning at the specified index.
-		/// </summary>
-		/// <param name="value">The number to convert.</param>
-		/// <param name="buffer">The byte array to copy the bytes into</param>
-		/// <param name="index">The first index into the array to copy the bytes into</param>
-		public void CopyBytes(ushort value, byte[] buffer, int index)
-		{
-			CopyBytes(value, 2, buffer, index);
-		}
-
-		/// <summary>
-		/// Copies the specified 32-bit unsigned integer value into the specified byte array,
-		/// beginning at the specified index.
-		/// </summary>
-		/// <param name="value">The number to convert.</param>
-		/// <param name="buffer">The byte array to copy the bytes into</param>
-		/// <param name="index">The first index into the array to copy the bytes into</param>
-		public void CopyBytes(uint value, byte[] buffer, int index)
-		{
-			CopyBytes(value, 4, buffer, index);
-		}
-
-		/// <summary>
-		/// Copies the specified 64-bit unsigned integer value into the specified byte array,
-		/// beginning at the specified index.
-		/// </summary>
-		/// <param name="value">The number to convert.</param>
-		/// <param name="buffer">The byte array to copy the bytes into</param>
-		/// <param name="index">The first index into the array to copy the bytes into</param>
-		public void CopyBytes(ulong value, byte[] buffer, int index)
-		{
-			CopyBytes(unchecked((long)value), 8, buffer, index);
-		}
-
-		#endregion
-
-		#region Private struct used for Single/Int32 conversions
-		/// <summary>
-		/// Union used solely for the equivalent of DoubleToInt64Bits and vice versa.
-		/// </summary>
-		[StructLayout(LayoutKind.Explicit)]
-			struct Int32SingleUnion
+        /// <summary>
+        /// Union used solely for the equivalent of DoubleToInt64Bits and vice versa.
+        /// </summary>
+        [StructLayout(LayoutKind.Explicit)]
+	    internal struct Int32SingleUnion
 		{
 			/// <summary>
 			/// Int32 version of the value.
@@ -691,6 +624,5 @@ namespace MiscUtil.Conversion
 				get { return f; }
 			}
 		}
-		#endregion
 	}
 }

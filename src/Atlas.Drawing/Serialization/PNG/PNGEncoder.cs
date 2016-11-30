@@ -1,8 +1,8 @@
 ﻿using System;
 using System.IO;
 using System.IO.Compression;
-using MiscUtil.Conversion;
-using MiscUtil.IO;
+using Atlas.Drawing.Conversion;
+using Atlas.Drawing.IO;
 
 namespace Atlas.Drawing.Serialization.PNG
 {

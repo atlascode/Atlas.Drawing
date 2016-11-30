@@ -1,5 +1,4 @@
-
-namespace MiscUtil.Conversion
+namespace Atlas.Drawing.Conversion
 {
 	/// <summary>
 	/// Implementation of EndianBitConverter which converts to/from big-endian
@@ -10,6 +9,14 @@ namespace MiscUtil.Conversion
 		/// <summary>
 		/// Indicates the byte order ("endianess") in which data is converted using this class.
 		/// </summary>
+		public sealed override Endianness Endianness 
+		{ 
+			get { return Endianness.BigEndian; }
+		}
+
+        /// <summary>
+		/// Indicates the byte order ("endianess") in which data is converted using this class.
+		/// </summary>
 		/// <remarks>
 		/// Different computer architectures store data using different byte orders. "Big-endian"
 		/// means the most significant byte is on the left end of a word. "Little-endian" means the 
@@ -17,26 +24,17 @@ namespace MiscUtil.Conversion
 		/// </remarks>
 		/// <returns>true if this converter is little-endian, false otherwise.</returns>
 		public sealed override bool IsLittleEndian()
-		{
-			return false;
-		}
-
-		/// <summary>
-		/// Indicates the byte order ("endianess") in which data is converted using this class.
-		/// </summary>
-		public sealed override Endianness Endianness 
-		{ 
-			get { return Endianness.BigEndian; }
-		}
-
-		/// <summary>
-		/// Copies the specified number of bytes from value to buffer, starting at index.
-		/// </summary>
-		/// <param name="value">The value to copy</param>
-		/// <param name="bytes">The number of bytes to copy</param>
-		/// <param name="buffer">The buffer to copy the bytes into</param>
-		/// <param name="index">The index to start at</param>
-		protected override void CopyBytesImpl(long value, int bytes, byte[] buffer, int index)
+        {
+            return false;
+        }
+        /// <summary>
+        /// Copies the specified number of bytes from value to buffer, starting at index.
+        /// </summary>
+        /// <param name="value">The value to copy</param>
+        /// <param name="bytes">The number of bytes to copy</param>
+        /// <param name="buffer">The buffer to copy the bytes into</param>
+        /// <param name="index">The index to start at</param>
+        protected override void CopyBytesImpl(long value, int bytes, byte[] buffer, int index)
 		{
 			int endOffset = index+bytes-1;
 			for (int i=0; i < bytes; i++)
@@ -45,7 +43,6 @@ namespace MiscUtil.Conversion
 				value = value >> 8;
 			}
 		}
-		
 		/// <summary>
 		/// Returns a value built from the specified number of bytes from the given buffer,
 		/// starting at index.
