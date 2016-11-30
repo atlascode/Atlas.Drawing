@@ -5,6 +5,10 @@
     "NETStandard.Library": "1.6.0"
   },
 
+  "buildOptions": {
+    "warningsAsErrors": true
+  },
+
   "frameworks": {
     "net451": {},
     "netstandard1.6": {
