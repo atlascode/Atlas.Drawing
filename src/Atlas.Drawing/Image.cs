@@ -60,8 +60,8 @@ namespace Atlas.Drawing
 
             string header = System.Text.Encoding.ASCII.GetString(imageBytes, 0, 4);
 
-            try
-            {
+            //try
+            //{
                 if (header.Substring(0,2) == "BM")
                 {
                     int width;
@@ -76,12 +76,12 @@ namespace Atlas.Drawing
                     var bytes = new PNGDecoder().Decode(ref imageBytes, out width, out height);
                     return new Image(bytes, width, height);
                 }
-            }
-            catch (Exception ex)
-            {
-                // We wrap exceptions reading images with an OutOfMemory Exception because the System.Drawing.Image class throws these exceptions from GDI+ so to maintain backwards compatability we throw the same
-                throw new System.OutOfMemoryException("There was an error loading the bitmap. See inner exception for details", ex);
-            }
+            //}
+            //catch (Exception ex)
+            //{
+            //    // We wrap exceptions reading images with an OutOfMemory Exception because the System.Drawing.Image class throws these exceptions from GDI+ so to maintain backwards compatability we throw the same
+            //    throw new System.OutOfMemoryException("There was an error loading the bitmap. See inner exception for details", ex);
+            //}
 
             return null;
         }
