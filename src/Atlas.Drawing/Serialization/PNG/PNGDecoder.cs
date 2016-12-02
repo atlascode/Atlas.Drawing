@@ -147,214 +147,588 @@ namespace Atlas.Drawing.Serialization.PNG
             }
 
             var finalBytes = new byte[width * height * 4];
-            if (_useColorTable)
+
+            if (_interlaceMethod == 1)
             {
-                if (bitsPerPixel == 3)
+                //1 6 4 6 2 6 4 6
+                //7 7 7 7 7 7 7 7
+                //5 6 5 6 5 6 5 6
+                //7 7 7 7 7 7 7 7
+                //3 6 4 6 3 6 4 6
+                //7 7 7 7 7 7 7 7
+                //5 6 5 6 5 6 5 6
+                //7 7 7 7 7 7 7 7
+
+
+                int x = 0;
+                int y = 0;
+                int i = 0;
+                int j = 0;
+
+                // Pass 1
+                for (; i < unfilteredBytes.Length;)
                 {
-                    for (int i = 0, j = 0; i < unfilteredBytes.Length; i++)
+                    j = (x * 4) + (y * destinationStride);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+                    x += 8;
+                    if (x >= width)
                     {
-                        var bits = new BitArray(new byte[] { unfilteredBytes[i] });
-                        for (int b = 7; b >= 0; b--)
-                        {
-                            int colorIndex = bits[b] ? 1 : 0;
-                            finalBytes[j++] = colorPalette[colorIndex * 3];
-                            finalBytes[j++] = colorPalette[(colorIndex * 3) + 1];
-                            finalBytes[j++] = colorPalette[(colorIndex * 3) + 2];
-                            finalBytes[j++] = 255;
-                        }
+                        x = 0;
+                        y += 8;
+                    }
+
+                    if (y >= height)
+                    {
+                        break;
                     }
                 }
-                else if (bitsPerPixel == 6)
+
+                // Pass 2
+                x = 0;
+                y = 0;
+                for (; i < unfilteredBytes.Length;)
                 {
-                    for (int i = 0, j = 0; i < unfilteredBytes.Length; i++)
+                    j = (x * 4) + (y * destinationStride) + (4 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+                    x += 8;
+                    if (x >= width)
                     {
-                        var bits = new BitArray(new byte[] { unfilteredBytes[i] });
-                        for (int b = 7; b >= 0; b -= 2)
-                        {
-                            int colorIndex = ((bits[b] ? 1 : 0) * 2) + (bits[b - 1] ? 1 : 0);
-                            finalBytes[j++] = colorPalette[colorIndex * 3];
-                            finalBytes[j++] = colorPalette[(colorIndex * 3) + 1];
-                            finalBytes[j++] = colorPalette[(colorIndex * 3) + 2];
-                            finalBytes[j++] = 255;
-                        }
+                        x = 0;
+                        y += 8;
+                    }
+
+                    if (y >= height)
+                    {
+                        break;
                     }
                 }
-                else if (bitsPerPixel == 12)
+
+                // Pass 3
+                x = 0;
+                y = 0;
+                for (; i < unfilteredBytes.Length;)
                 {
-                    for (int i = 0, j = 0; i < unfilteredBytes.Length; i++)
+                    j = (x * 4) + ((y + 4) * destinationStride);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    j = (x * 4) + ((y + 4) * destinationStride) + (4 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    x += 8;
+                    if (x >= width)
                     {
-                        uint b = unfilteredBytes[i];
+                        x = 0;
+                        y += 8;
+                    }
 
-                        int colorIndex = (byte)((b & 0xF0) >> 4);
-                        finalBytes[j++] = colorPalette[colorIndex * 3];
-                        finalBytes[j++] = colorPalette[(colorIndex * 3) + 1];
-                        finalBytes[j++] = colorPalette[(colorIndex * 3) + 2];
-                        finalBytes[j++] = 255; // alphaPalette[colorIndex];
-
-                        int colorIndex2 = (byte)(b & 0x0F);
-                        finalBytes[j++] = colorPalette[colorIndex * 3];
-                        finalBytes[j++] = colorPalette[(colorIndex * 3) + 1];
-                        finalBytes[j++] = colorPalette[(colorIndex * 3) + 2];
-                        finalBytes[j++] = 255; // alphaPalette[colorIndex];
-
+                    if (y >= height)
+                    {
+                        break;
                     }
                 }
-                else
+
+                // Pass 4
+                x = 0;
+                y = 0;
+                for (; i < unfilteredBytes.Length;)
                 {
-                    for (int i = 0, j = 0; i < unfilteredBytes.Length; i++)
+                    j = (x * 4) + (y * destinationStride) + (2 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    j = (x * 4) + (y * destinationStride) + (6 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    j = (x * 4) + ((y + 4) * destinationStride) + (2 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    j = (x * 4) + ((y + 4) * destinationStride) + (6 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    x += 8;
+                    if (x >= width)
                     {
-                        int colorIndex = unfilteredBytes[i];
-                        finalBytes[j++] = colorPalette[colorIndex * 3];
-                        finalBytes[j++] = colorPalette[(colorIndex * 3) + 1];
-                        finalBytes[j++] = colorPalette[(colorIndex * 3) + 2];
-                        finalBytes[j++] = 255; // alphaPalette[colorIndex];
+                        x = 0;
+                        y += 8;
+                    }
+
+                    if (y >= height)
+                    {
+                        break;
+                    }
+                }
+
+                // Pass 5
+                x = 0;
+                y = 0;
+                for (; i < unfilteredBytes.Length;)
+                {
+                    j = (x * 4) + ((y + 2) * destinationStride);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    j = (x * 4) + ((y + 2) * destinationStride) + (2 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    j = (x * 4) + ((y + 4) * destinationStride) + (4 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    j = (x * 4) + ((y + 4) * destinationStride) + (6 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    j = (x * 4) + ((y + 6) * destinationStride);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    j = (x * 4) + ((y + 6) * destinationStride) + (2 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    j = (x * 4) + ((y + 6) * destinationStride) + (4 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    j = (x * 4) + ((y + 6) * destinationStride) + (6 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    x += 8;
+                    if (x >= width)
+                    {
+                        x = 0;
+                        y += 8;
+                    }
+
+                    if (y >= height)
+                    {
+                        break;
+                    }
+                }
+
+                // Pass 6
+                x = 0;
+                y = 0;
+                for (; i < unfilteredBytes.Length;)
+                {
+                    j = (x * 4) + (y * destinationStride) + (1 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    j = (x * 4) + (y * destinationStride) + (3 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    j = (x * 4) + (y * destinationStride) + (5 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    j = (x * 4) + (y * destinationStride) + (7 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    j = (x * 4) + ((y + 2) * destinationStride) + (1 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    j = (x * 4) + ((y + 2) * destinationStride) + (3 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    j = (x * 4) + ((y + 2) * destinationStride) + (5 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    j = (x * 4) + ((y + 2) * destinationStride) + (7 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    j = (x * 4) + ((y + 4) * destinationStride) + (1 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    j = (x * 4) + ((y + 4) * destinationStride) + (3 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    j = (x * 4) + ((y + 4) * destinationStride) + (5 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    j = (x * 4) + ((y + 4) * destinationStride) + (7 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    j = (x * 4) + ((y + 6) * destinationStride) + (1 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    j = (x * 4) + ((y + 6) * destinationStride) + (3 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    j = (x * 4) + ((y + 6) * destinationStride) + (5 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    j = (x * 4) + ((y + 6) * destinationStride) + (7 * 4);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
+
+                    x += 8;
+                    if (x >= width)
+                    {
+                        x = 0;
+                        y += 8;
+                    }
+
+                    if (y >= height)
+                    {
+                        break;
+                    }
+                }
+
+                // Pass 7
+                x = 0;
+                y = 0;
+                for (; i < unfilteredBytes.Length;)
+                {
+                    for (int k = 0; k < 8; k++)
+                    {
+                        j = (x * 4) + ((y + 1) * destinationStride) + (k * 4);
+                        finalBytes[j++] = unfilteredBytes[i++];
+                        finalBytes[j++] = unfilteredBytes[i++];
+                        finalBytes[j++] = unfilteredBytes[i++];
+                        finalBytes[j++] = 255;
+                    }
+
+                    for (int k = 0; k < 8; k++)
+                    {
+                        j = (x * 4) + ((y + 3) * destinationStride) + (k * 4);
+                        finalBytes[j++] = unfilteredBytes[i++];
+                        finalBytes[j++] = unfilteredBytes[i++];
+                        finalBytes[j++] = unfilteredBytes[i++];
+                        finalBytes[j++] = 255;
+                    }
+
+                    for (int k = 0; k < 8; k++)
+                    {
+                        j = (x * 4) + ((y + 5) * destinationStride) + (k * 4);
+                        finalBytes[j++] = unfilteredBytes[i++];
+                        finalBytes[j++] = unfilteredBytes[i++];
+                        finalBytes[j++] = unfilteredBytes[i++];
+                        finalBytes[j++] = 255;
+                    }
+
+                    for (int k = 0; k < 8; k++)
+                    {
+                        j = (x * 4) + ((y + 7) * destinationStride) + (k * 4);
+                        finalBytes[j++] = unfilteredBytes[i++];
+                        finalBytes[j++] = unfilteredBytes[i++];
+                        finalBytes[j++] = unfilteredBytes[i++];
+                        finalBytes[j++] = 255;
+                    }
+
+
+                    x += 8;
+                    if (x >= width)
+                    {
+                        x = 0;
+                        y += 8;
+                    }
+
+                    if (y >= height)
+                    {
+                        break;
                     }
                 }
             }
             else
             {
-                if (bitsPerPixel == 1)
-                {
-                    for (int i = 0, j = 0; i < unfilteredBytes.Length; i++)
-                    {
-                        var bits = new BitArray(new byte[] { unfilteredBytes[i] });
-                        for (int b = 7; b >= 0; b--)
-                        {
-                            finalBytes[j++] = (byte)(bits[b] ? 255 : 0);
-                            finalBytes[j++] = (byte)(bits[b] ? 255 : 0);
-                            finalBytes[j++] = (byte)(bits[b] ? 255 : 0);
-                            finalBytes[j++] = 255;
-                        }
-                    }
-                }
-                else if (bitsPerPixel == 2)
-                {
-                    for (int i = 0, j = 0; i < unfilteredBytes.Length; i++)
-                    {
-                        var bits = new BitArray(new byte[] { unfilteredBytes[i] });
-                        for (int b = 7; b >= 0; b -= 2)
-                        {
-                            int value = ((bits[b] ? 1 : 0) * 2) + (bits[b - 1] ? 1 : 0);
-                            byte color = (byte)(value * 85);
-                            finalBytes[j++] = color;
-                            finalBytes[j++] = color;
-                            finalBytes[j++] = color;
-                            finalBytes[j++] = 255;
-                        }
-                    }
-                }
-                else if (bitsPerPixel == 4)
-                {
-                    for (int i = 0, j = 0; i < unfilteredBytes.Length; i++)
-                    {
-                        uint b = unfilteredBytes[i];
-                        byte color = (byte)(((b & 0xF0) >> 4) * 17);
-                        finalBytes[j++] = color;
-                        finalBytes[j++] = color;
-                        finalBytes[j++] = color;
-                        finalBytes[j++] = 255;
 
-                        byte color2 = (byte)((b & 0x0F) * 17);
-                        finalBytes[j++] = color2;
-                        finalBytes[j++] = color2;
-                        finalBytes[j++] = color2;
-                        finalBytes[j++] = 255;
-                    }
-                }
-                else if (bitsPerPixel == 8)
+
+                if (_useColorTable)
                 {
-                    for (int i = 0, j = 0; i < unfilteredBytes.Length; i++)
-                    {
-                        byte color = unfilteredBytes[i];
-                        finalBytes[j++] = color;
-                        finalBytes[j++] = color;
-                        finalBytes[j++] = color;
-                        finalBytes[j++] = 255;
-                    }
-                }
-                else if (bitsPerPixel == 16)
-                {
-                    if (_hasAlpha) // 8 bit 2 channels
+                    if (bitsPerPixel == 3)
                     {
                         for (int i = 0, j = 0; i < unfilteredBytes.Length; i++)
                         {
-                            byte color = unfilteredBytes[i++];
-                            byte alpha = unfilteredBytes[i];
-                            finalBytes[j++] = color;
-                            finalBytes[j++] = color;
-                            finalBytes[j++] = color;
-                            finalBytes[j++] = alpha;
+                            var bits = new BitArray(new byte[] { unfilteredBytes[i] });
+                            for (int b = 7; b >= 0; b--)
+                            {
+                                int colorIndex = bits[b] ? 1 : 0;
+                                finalBytes[j++] = colorPalette[colorIndex * 3];
+                                finalBytes[j++] = colorPalette[(colorIndex * 3) + 1];
+                                finalBytes[j++] = colorPalette[(colorIndex * 3) + 2];
+                                finalBytes[j++] = 255;
+                            }
+                        }
+                    }
+                    else if (bitsPerPixel == 6)
+                    {
+                        for (int i = 0, j = 0; i < unfilteredBytes.Length; i++)
+                        {
+                            var bits = new BitArray(new byte[] { unfilteredBytes[i] });
+                            for (int b = 7; b >= 0; b -= 2)
+                            {
+                                int colorIndex = ((bits[b] ? 1 : 0) * 2) + (bits[b - 1] ? 1 : 0);
+                                finalBytes[j++] = colorPalette[colorIndex * 3];
+                                finalBytes[j++] = colorPalette[(colorIndex * 3) + 1];
+                                finalBytes[j++] = colorPalette[(colorIndex * 3) + 2];
+                                finalBytes[j++] = 255;
+                            }
+                        }
+                    }
+                    else if (bitsPerPixel == 12)
+                    {
+                        for (int i = 0, j = 0; i < unfilteredBytes.Length; i++)
+                        {
+                            uint b = unfilteredBytes[i];
+
+                            int colorIndex = (byte)((b & 0xF0) >> 4);
+                            finalBytes[j++] = colorPalette[colorIndex * 3];
+                            finalBytes[j++] = colorPalette[(colorIndex * 3) + 1];
+                            finalBytes[j++] = colorPalette[(colorIndex * 3) + 2];
+                            finalBytes[j++] = 255; // alphaPalette[colorIndex];
+
+                            int colorIndex2 = (byte)(b & 0x0F);
+                            finalBytes[j++] = colorPalette[colorIndex * 3];
+                            finalBytes[j++] = colorPalette[(colorIndex * 3) + 1];
+                            finalBytes[j++] = colorPalette[(colorIndex * 3) + 2];
+                            finalBytes[j++] = 255; // alphaPalette[colorIndex];
+
                         }
                     }
                     else
                     {
                         for (int i = 0, j = 0; i < unfilteredBytes.Length; i++)
                         {
-                            byte color = unfilteredBytes[i++];
-                            byte color2 = unfilteredBytes[i];
+                            int colorIndex = unfilteredBytes[i];
+                            finalBytes[j++] = colorPalette[colorIndex * 3];
+                            finalBytes[j++] = colorPalette[(colorIndex * 3) + 1];
+                            finalBytes[j++] = colorPalette[(colorIndex * 3) + 2];
+                            finalBytes[j++] = 255; // alphaPalette[colorIndex];
+                        }
+                    }
+                }
+                else
+                {
+                    if (bitsPerPixel == 1)
+                    {
+                        for (int i = 0, j = 0; i < unfilteredBytes.Length; i++)
+                        {
+                            var bits = new BitArray(new byte[] { unfilteredBytes[i] });
+                            for (int b = 7; b >= 0; b--)
+                            {
+                                finalBytes[j++] = (byte)(bits[b] ? 255 : 0);
+                                finalBytes[j++] = (byte)(bits[b] ? 255 : 0);
+                                finalBytes[j++] = (byte)(bits[b] ? 255 : 0);
+                                finalBytes[j++] = 255;
+                            }
+                        }
+                    }
+                    else if (bitsPerPixel == 2)
+                    {
+                        for (int i = 0, j = 0; i < unfilteredBytes.Length; i++)
+                        {
+                            var bits = new BitArray(new byte[] { unfilteredBytes[i] });
+                            for (int b = 7; b >= 0; b -= 2)
+                            {
+                                int value = ((bits[b] ? 1 : 0) * 2) + (bits[b - 1] ? 1 : 0);
+                                byte color = (byte)(value * 85);
+                                finalBytes[j++] = color;
+                                finalBytes[j++] = color;
+                                finalBytes[j++] = color;
+                                finalBytes[j++] = 255;
+                            }
+                        }
+                    }
+                    else if (bitsPerPixel == 4)
+                    {
+                        for (int i = 0, j = 0; i < unfilteredBytes.Length; i++)
+                        {
+                            uint b = unfilteredBytes[i];
+                            byte color = (byte)(((b & 0xF0) >> 4) * 17);
+                            finalBytes[j++] = color;
+                            finalBytes[j++] = color;
+                            finalBytes[j++] = color;
+                            finalBytes[j++] = 255;
 
-                            byte color3 = (byte)(((int)(color << 8) + color2) / 256);
-
-                            finalBytes[j++] = color3;
-                            finalBytes[j++] = color3;
-                            finalBytes[j++] = color3;
+                            byte color2 = (byte)((b & 0x0F) * 17);
+                            finalBytes[j++] = color2;
+                            finalBytes[j++] = color2;
+                            finalBytes[j++] = color2;
                             finalBytes[j++] = 255;
                         }
                     }
-                }
-                else if (bitsPerPixel == 24)
-                {
-                    for (int i = 0, j = 0; i < unfilteredBytes.Length;)
+                    else if (bitsPerPixel == 8)
                     {
-                        finalBytes[j++] = unfilteredBytes[i++];
-                        finalBytes[j++] = unfilteredBytes[i++];
-                        finalBytes[j++] = unfilteredBytes[i++];
-                        finalBytes[j++] = 255;
+                        for (int i = 0, j = 0; i < unfilteredBytes.Length; i++)
+                        {
+                            byte color = unfilteredBytes[i];
+                            finalBytes[j++] = color;
+                            finalBytes[j++] = color;
+                            finalBytes[j++] = color;
+                            finalBytes[j++] = 255;
+                        }
                     }
-                }
-                else if (bitsPerPixel == 32)
-                {
-                    if (!_hasColor && _hasAlpha) // 16 bit 2 channels
+                    else if (bitsPerPixel == 16)
+                    {
+                        if (_hasAlpha) // 8 bit 2 channels
+                        {
+                            for (int i = 0, j = 0; i < unfilteredBytes.Length; i++)
+                            {
+                                byte color = unfilteredBytes[i++];
+                                byte alpha = unfilteredBytes[i];
+                                finalBytes[j++] = color;
+                                finalBytes[j++] = color;
+                                finalBytes[j++] = color;
+                                finalBytes[j++] = alpha;
+                            }
+                        }
+                        else
+                        {
+                            for (int i = 0, j = 0; i < unfilteredBytes.Length; i++)
+                            {
+                                byte color = unfilteredBytes[i++];
+                                byte color2 = unfilteredBytes[i];
+
+                                byte color3 = (byte)(((int)(color << 8) + color2) / 256);
+
+                                finalBytes[j++] = color3;
+                                finalBytes[j++] = color3;
+                                finalBytes[j++] = color3;
+                                finalBytes[j++] = 255;
+                            }
+                        }
+                    }
+                    else if (bitsPerPixel == 24)
                     {
                         for (int i = 0, j = 0; i < unfilteredBytes.Length;)
                         {
-                            byte color = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
-                            byte alpha = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
-                            finalBytes[j++] = color;
-                            finalBytes[j++] = color;
-                            finalBytes[j++] = color;
-                            finalBytes[j++] = alpha;
+                            finalBytes[j++] = unfilteredBytes[i++];
+                            finalBytes[j++] = unfilteredBytes[i++];
+                            finalBytes[j++] = unfilteredBytes[i++];
+                            finalBytes[j++] = 255;
                         }
                     }
-                    else // 8 bit color with alpha
+                    else if (bitsPerPixel == 32)
+                    {
+                        if (!_hasColor && _hasAlpha) // 16 bit 2 channels
+                        {
+                            for (int i = 0, j = 0; i < unfilteredBytes.Length;)
+                            {
+                                byte color = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
+                                byte alpha = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
+                                finalBytes[j++] = color;
+                                finalBytes[j++] = color;
+                                finalBytes[j++] = color;
+                                finalBytes[j++] = alpha;
+                            }
+                        }
+                        else // 8 bit color with alpha
+                        {
+                            for (int i = 0, j = 0; i < unfilteredBytes.Length;)
+                            {
+                                finalBytes[j++] = unfilteredBytes[i++];
+                                finalBytes[j++] = unfilteredBytes[i++];
+                                finalBytes[j++] = unfilteredBytes[i++];
+                                finalBytes[j++] = unfilteredBytes[i++];
+                            }
+                        }
+                    }
+                    else if (bitsPerPixel == 48) // 16 bit color
                     {
                         for (int i = 0, j = 0; i < unfilteredBytes.Length;)
                         {
-                            finalBytes[j++] = unfilteredBytes[i++];
-                            finalBytes[j++] = unfilteredBytes[i++];
-                            finalBytes[j++] = unfilteredBytes[i++];
-                            finalBytes[j++] = unfilteredBytes[i++];
+                            finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
+                            finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
+                            finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
+                            finalBytes[j++] = 255;
                         }
                     }
-                }
-                else if (bitsPerPixel == 48) // 16 bit color
-                {
-                    for (int i = 0, j = 0; i < unfilteredBytes.Length;)
+                    else if (bitsPerPixel == 64) // 16 bit color with alpha
                     {
-                        finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
-                        finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
-                        finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
-                        finalBytes[j++] = 255;
-                    }
-                }
-                else if (bitsPerPixel == 64) // 16 bit color with alpha
-                {
-                    for (int i = 0, j = 0; i < unfilteredBytes.Length;)
-                    {
-                        finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
-                        finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
-                        finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
-                        finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
+                        for (int i = 0, j = 0; i < unfilteredBytes.Length;)
+                        {
+                            finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
+                            finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
+                            finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
+                            finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
+                        }
                     }
                 }
             }
