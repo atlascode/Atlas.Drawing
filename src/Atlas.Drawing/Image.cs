@@ -2,6 +2,7 @@
 using System.IO;
 using Atlas.Drawing.Imaging;
 using Atlas.Drawing.Serialization.BMP;
+using Atlas.Drawing.Serialization.JPEG;
 using Atlas.Drawing.Serialization.PNG;
 
 namespace Atlas.Drawing
@@ -62,20 +63,27 @@ namespace Atlas.Drawing
 
             //try
             //{
-                if (header.Substring(0,2) == "BM")
-                {
-                    int width;
-                    int height;
-                    var bytes = new BMPDecoder().Decode(ref imageBytes, out width, out height);
-                    return new Image(bytes, width, height);
-                }
-                else if (imageBytes[0] == 0x89 && header.Substring(1) == "PNG")
-                {
-                    int width;
-                    int height;
-                    var bytes = new PNGDecoder().Decode(ref imageBytes, out width, out height);
-                    return new Image(bytes, width, height);
-                }
+            if (header.Substring(0,2) == "BM")
+            {
+                int width;
+                int height;
+                var bytes = new BMPDecoder().Decode(ref imageBytes, out width, out height);
+                return new Image(bytes, width, height);
+            }
+            else if (imageBytes[0] == 0x89 && header.Substring(1) == "PNG")
+            {
+                int width;
+                int height;
+                var bytes = new PNGDecoder().Decode(ref imageBytes, out width, out height);
+                return new Image(bytes, width, height);
+            }
+            else if (IsJpeg(ref imageBytes))
+            {
+                int width;
+                int height;
+                var bytes = new JPEGDecoder().Decode(ref imageBytes, out width, out height);
+                return new Image(bytes, width, height);
+            }
             //}
             //catch (Exception ex)
             //{
@@ -84,6 +92,12 @@ namespace Atlas.Drawing
             //}
 
             return null;
+        }
+
+        private static bool IsJpeg(ref byte[] bytes)
+        {
+            // JPEG magic number
+            return bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF;
         }
 
         protected Image(byte[] rawBytes, int width, int height)
