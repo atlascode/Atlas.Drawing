@@ -1,15 +1,16 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 
 namespace Atlas.Drawing.Serialization.JPEG
 {
     public class JPEGDecoder
     {
+        private byte[] _scanData;
         private ushort _xResolution;
         private ushort _yResolution;
         private ushort _resetInterval;
-        private byte[][] _dqt = new byte[4][];
+        private ushort[][] _dqt = new ushort[4][];
         private HuffmanTable[][] _dht = new HuffmanTable[4][];
         private readonly byte[] _naturalOrder = new byte[] 
         {
@@ -95,7 +96,6 @@ namespace Atlas.Drawing.Serialization.JPEG
                 }
             }
         }
-
         private void ParseSOF(BinaryReader reader)
         {
             var length = reader.ReadUInt16BE();
@@ -144,10 +144,10 @@ namespace Atlas.Drawing.Serialization.JPEG
 
             while (reader.BaseStream.Position < tableEnd)
             {
-                var ident = reader.ReadByte();
+                var ident = (ushort)reader.ReadByte();
 
                 if (_dqt[ident] == null)
-                    _dqt[ident] = new byte[64];
+                    _dqt[ident] = new ushort[64];
 
                 // NOTE(Dan) 8-bit values
                 if ((ident & 0xF0) >> 4 == 0)
@@ -157,32 +157,28 @@ namespace Atlas.Drawing.Serialization.JPEG
                         _dqt[ident][_naturalOrder[i]] = reader.ReadByte();
                     }
                 }
+                // NOTE(Dan) 16-bit values
+                else if ((ident & 0xF0) >> 4 == 1)
+                {
+                   for (int i = 0; i < 64; i++)
+                   {
+                       _dqt[ident][_naturalOrder[i]] = reader.ReadUInt16BE();
+                   }
+                }
                 else
                 {
-                    throw new NotImplementedException("Only 8-bit DQT is currently supported");
+                    throw new NotImplementedException("Only 8-bit and 16-bit DQT is currently supported");
                 }
-
-                //// NOTE(Dan) 16-bit values
-                //if ((indent & 0xF0) >> 4 == 1)
-                //{
-                //    for (int i = 0; i < 64; i++)
-                //    {
-                //        _dqt[indent][_naturalOrder[i]] = reader.ReadUInt16BE();
-                //    }
-                //}
             }
         }
         private void ParseDHT(BinaryReader reader)
         {
-            // TODO(Dan): Do this so that we read all of the DHT tables not just the first.
-
             var start = reader.BaseStream.Position;
             int length = reader.ReadUInt16BE() - 2;
             var end = start + length;
 
             while (length > 0)
             {
-                // q
                 int select = reader.ReadByte();
 
                 int lengthsTotal = 0;
@@ -203,7 +199,7 @@ namespace Atlas.Drawing.Serialization.JPEG
                 if (_dht[th] == null)
                     _dht[th] = new HuffmanTable[65536];
 
-                // TODO(Dan): Build table
+                // Build huffman table
                 int code = 0;
                 for (int i = 1; i <= 16; i++)
                 {
@@ -245,12 +241,53 @@ namespace Atlas.Drawing.Serialization.JPEG
                     throw new NotImplementedException();
 
                 reader.ReadByte();
-
-                // TODO(Dan): Read scan data.
-                ReadScanData(reader);
             }
+
+            if (reader.ReadByte() != 0)
+                throw new NotImplementedException();
+
+            if (reader.ReadByte() != 63)
+                throw new NotImplementedException();
+
+            reader.ReadByte();
+
+            ReadScanData(reader);
         }
-        
+        private void ReadScanData(BinaryReader reader)
+        {
+            // TODO(Dan): Can we do this with an upfront allocation?
+            var scanData = new List<byte>();
+
+            while(true)
+            {
+                var value = reader.ReadByte();
+
+                if (value == 0xFF)
+                {
+                    var next = reader.ReadByte();
+                    
+                    if (next == (byte)Marker.DUMMY)
+                    {
+                        scanData.Add(0xFF);
+                    }
+                    else
+                    {
+                        reader.BaseStream.Seek(-2, SeekOrigin.Current);
+                        break;
+                    }
+                }
+                else
+                {
+                    scanData.Add(value);
+                }
+            }
+
+            // NOTE(Dan): 2 padding bytes for huffman decoding
+            scanData.Add(0);
+            scanData.Add(0);
+
+            _scanData = scanData.ToArray();
+        }
        
         private enum Marker : byte
         {
