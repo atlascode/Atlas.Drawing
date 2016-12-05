@@ -33,6 +33,7 @@ namespace Atlas.Drawing.Serialization.JPEG
 
             using (var reader = new BinaryReader(new MemoryStream(bytes)))
             {
+                
                 Parse(reader);
             }
 
@@ -231,7 +232,7 @@ namespace Atlas.Drawing.Serialization.JPEG
 
             for (int i = 0; i < 3; i++)
             {
-                reader.ReadByte();
+                var id = reader.ReadByte();
                 var sample = reader.ReadByte();
 
                 if (i == 0 && sample != 0x00)
@@ -239,8 +240,6 @@ namespace Atlas.Drawing.Serialization.JPEG
 
                 if (i != 0 && sample != 0x11)
                     throw new NotImplementedException();
-
-                reader.ReadByte();
             }
 
             if (reader.ReadByte() != 0)
