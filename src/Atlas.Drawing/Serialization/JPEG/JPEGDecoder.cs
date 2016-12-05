@@ -33,11 +33,10 @@ namespace Atlas.Drawing.Serialization.JPEG
 
             using (var reader = new BinaryReader(new MemoryStream(bytes)))
             {
-                
                 Parse(reader);
             }
 
-            return bytes;
+            return DecodeScan();
         }
 
         private void Parse(BinaryReader reader)
@@ -109,8 +108,10 @@ namespace Atlas.Drawing.Serialization.JPEG
             _xResolution = reader.ReadUInt16BE();
 
             var componentCount = reader.ReadByte();
-            if (componentCount != 3)
-                throw new NotImplementedException();
+            // JFIF allows 1 component (Y)
+            // Otherwise there should be 3 (1 = Y, 2 = Cb, 3 = Cr)
+            if (componentCount != 3 && componentCount != 1)
+                throw new BadImageFormatException($"Invalid component count. Expecting either 1 or 3 but found {componentCount}");
 
             for (int i = 0; i < 3; i++)
             {
@@ -180,14 +181,12 @@ namespace Atlas.Drawing.Serialization.JPEG
 
             while (length > 0)
             {
-                int select = reader.ReadByte();
+                byte select = reader.ReadByte();
 
                 int lengthsTotal = 0;
+                var th = ((select & 0xf0) >> 3) | (select & 0x0f);
 
-                var tc = select >> 4;
-                var th = select & 15;
-
-                if (tc > 1 || th > 3)
+                if (th > 3)
                     throw new BadImageFormatException($"Bad DHT Header, JPEG is corrupt");
 
                 byte[] lengths = reader.ReadBytes(16);
