@@ -56,20 +56,66 @@ namespace Atlas.Drawing.Serialization.PNG
             width = _width;
             height = _height;
 
-            // add an alpha channel
+            int scanLineCount = height;
+
             int bitsPerPixel = _bitsPerChannel * ((_hasColor ? 3 : 1) + (_hasAlpha ? 1 : 0));
             int bytesPerPixel = (bitsPerPixel / 8);
             int sourceStride = ((width * (this._useColorTable ? _bitsPerChannel : bitsPerPixel)) /8) + 1;
             int destinationStride = (width * 4);
             byte[] unfilteredBytes = new byte[((width * (this._useColorTable ? _bitsPerChannel : bitsPerPixel)) / 8) * height];
 
+            int interlacePass = 1;
+            if (_interlaceMethod == 1)
+            {
+                sourceStride = (int)(Math.Ceiling((sourceStride-1) / 8d)) + 1;
+                scanLineCount = (int)Math.Ceiling(height / 8d);
+            }
+
             int w = 0;
+            int h = 0;
+            
             byte currentFilter = 0;
             for (int i = 0, j = 0; i < rawBytes.Length; i++)
             {
+                if(h == scanLineCount)
+                {
+                    interlacePass += 1;
+                    if(interlacePass == 2)
+                    {
+                        scanLineCount = (int)Math.Ceiling(height / 8d);
+                    }
+                    if (interlacePass == 3)
+                    {
+                        sourceStride = (int)Math.Ceiling(((width * (this._useColorTable ? _bitsPerChannel : bitsPerPixel)) / 8) / 4d) + 1;
+                        scanLineCount = (int)Math.Ceiling(height / 8d);
+                    }
+                    if (interlacePass == 4)
+                    {
+                        sourceStride = (int)Math.Ceiling(((width * (this._useColorTable ? _bitsPerChannel : bitsPerPixel)) / 8) / 4d) + 1;
+                        scanLineCount = (int)Math.Ceiling(height / 8d) * 2;
+                    }
+                    if (interlacePass == 5)
+                    {
+                        sourceStride = (int)Math.Ceiling(((width * (this._useColorTable ? _bitsPerChannel : bitsPerPixel)) / 8) / 2d) + 1;
+                        scanLineCount = (int)Math.Ceiling(height / 8d) * 2;
+                    }
+                    if (interlacePass == 6)
+                    {
+                        sourceStride = (int)Math.Ceiling(((width * (this._useColorTable ? _bitsPerChannel : bitsPerPixel)) / 8) / 2d) + 1;
+                        scanLineCount = (int)Math.Ceiling(height / 8d) * 4;
+                    }
+                    if (interlacePass == 7)
+                    {
+                        sourceStride = ((width * (this._useColorTable ? _bitsPerChannel : bitsPerPixel)) / 8) + 1;
+                        scanLineCount = (int)Math.Ceiling(height / 8d) * 4;
+                    }
+
+                    h = 0;
+                }
                 if(w == sourceStride)
                 {
                     w = 0;
+                    h += 1;
                 }
                 if(w == 0)
                 {
@@ -220,13 +266,7 @@ namespace Atlas.Drawing.Serialization.PNG
                     finalBytes[j++] = unfilteredBytes[i++];
                     finalBytes[j++] = 255;
 
-                    j = (x * 4) + ((y + 4) * destinationStride) + (4 * 4);
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = 255;
-
-                    x += 8;
+                    x += 4;
                     if (x >= width)
                     {
                         x = 0;
@@ -240,39 +280,21 @@ namespace Atlas.Drawing.Serialization.PNG
                 }
 
                 // Pass 4
-                x = 0;
+                x = 2;
                 y = 0;
                 for (; i < unfilteredBytes.Length;)
                 {
-                    j = (x * 4) + (y * destinationStride) + (2 * 4);
+                    j = (x * 4) + (y * destinationStride);
                     finalBytes[j++] = unfilteredBytes[i++];
                     finalBytes[j++] = unfilteredBytes[i++];
                     finalBytes[j++] = unfilteredBytes[i++];
                     finalBytes[j++] = 255;
 
-                    j = (x * 4) + (y * destinationStride) + (6 * 4);
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = 255;
-
-                    j = (x * 4) + ((y + 4) * destinationStride) + (2 * 4);
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = 255;
-
-                    j = (x * 4) + ((y + 4) * destinationStride) + (6 * 4);
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = 255;
-
-                    x += 8;
+                    x += 4;
                     if (x >= width)
                     {
-                        x = 0;
-                        y += 8;
+                        x = 2;
+                        y += 4;
                     }
 
                     if (y >= height)
@@ -283,62 +305,20 @@ namespace Atlas.Drawing.Serialization.PNG
 
                 // Pass 5
                 x = 0;
-                y = 0;
+                y = 2;
                 for (; i < unfilteredBytes.Length;)
                 {
-                    j = (x * 4) + ((y + 2) * destinationStride);
+                    j = (x * 4) + (y * destinationStride);
                     finalBytes[j++] = unfilteredBytes[i++];
                     finalBytes[j++] = unfilteredBytes[i++];
                     finalBytes[j++] = unfilteredBytes[i++];
                     finalBytes[j++] = 255;
 
-                    j = (x * 4) + ((y + 2) * destinationStride) + (2 * 4);
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = 255;
-
-                    j = (x * 4) + ((y + 4) * destinationStride) + (4 * 4);
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = 255;
-
-                    j = (x * 4) + ((y + 4) * destinationStride) + (6 * 4);
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = 255;
-
-                    j = (x * 4) + ((y + 6) * destinationStride);
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = 255;
-
-                    j = (x * 4) + ((y + 6) * destinationStride) + (2 * 4);
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = 255;
-
-                    j = (x * 4) + ((y + 6) * destinationStride) + (4 * 4);
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = 255;
-
-                    j = (x * 4) + ((y + 6) * destinationStride) + (6 * 4);
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = 255;
-
-                    x += 8;
+                    x += 2;
                     if (x >= width)
                     {
                         x = 0;
-                        y += 8;
+                        y += 4;
                     }
 
                     if (y >= height)
@@ -348,111 +328,21 @@ namespace Atlas.Drawing.Serialization.PNG
                 }
 
                 // Pass 6
-                x = 0;
+                x = 1;
                 y = 0;
                 for (; i < unfilteredBytes.Length;)
                 {
-                    j = (x * 4) + (y * destinationStride) + (1 * 4);
+                    j = (x * 4) + (y * destinationStride);
                     finalBytes[j++] = unfilteredBytes[i++];
                     finalBytes[j++] = unfilteredBytes[i++];
                     finalBytes[j++] = unfilteredBytes[i++];
                     finalBytes[j++] = 255;
 
-                    j = (x * 4) + (y * destinationStride) + (3 * 4);
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = 255;
-
-                    j = (x * 4) + (y * destinationStride) + (5 * 4);
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = 255;
-
-                    j = (x * 4) + (y * destinationStride) + (7 * 4);
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = 255;
-
-                    j = (x * 4) + ((y + 2) * destinationStride) + (1 * 4);
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = 255;
-
-                    j = (x * 4) + ((y + 2) * destinationStride) + (3 * 4);
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = 255;
-
-                    j = (x * 4) + ((y + 2) * destinationStride) + (5 * 4);
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = 255;
-
-                    j = (x * 4) + ((y + 2) * destinationStride) + (7 * 4);
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = 255;
-
-                    j = (x * 4) + ((y + 4) * destinationStride) + (1 * 4);
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = 255;
-
-                    j = (x * 4) + ((y + 4) * destinationStride) + (3 * 4);
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = 255;
-
-                    j = (x * 4) + ((y + 4) * destinationStride) + (5 * 4);
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = 255;
-
-                    j = (x * 4) + ((y + 4) * destinationStride) + (7 * 4);
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = 255;
-
-                    j = (x * 4) + ((y + 6) * destinationStride) + (1 * 4);
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = 255;
-
-                    j = (x * 4) + ((y + 6) * destinationStride) + (3 * 4);
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = 255;
-
-                    j = (x * 4) + ((y + 6) * destinationStride) + (5 * 4);
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = 255;
-
-                    j = (x * 4) + ((y + 6) * destinationStride) + (7 * 4);
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = unfilteredBytes[i++];
-                    finalBytes[j++] = 255;
-
-                    x += 8;
+                    x += 2;
                     if (x >= width)
                     {
-                        x = 0;
-                        y += 8;
+                        x = 1;
+                        y += 2;
                     }
 
                     if (y >= height)
@@ -463,51 +353,20 @@ namespace Atlas.Drawing.Serialization.PNG
 
                 // Pass 7
                 x = 0;
-                y = 0;
+                y = 1;
                 for (; i < unfilteredBytes.Length;)
                 {
-                    for (int k = 0; k < 8; k++)
-                    {
-                        j = (x * 4) + ((y + 1) * destinationStride) + (k * 4);
-                        finalBytes[j++] = unfilteredBytes[i++];
-                        finalBytes[j++] = unfilteredBytes[i++];
-                        finalBytes[j++] = unfilteredBytes[i++];
-                        finalBytes[j++] = 255;
-                    }
+                    j = (x * 4) + (y * destinationStride);
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = unfilteredBytes[i++];
+                    finalBytes[j++] = 255;
 
-                    for (int k = 0; k < 8; k++)
-                    {
-                        j = (x * 4) + ((y + 3) * destinationStride) + (k * 4);
-                        finalBytes[j++] = unfilteredBytes[i++];
-                        finalBytes[j++] = unfilteredBytes[i++];
-                        finalBytes[j++] = unfilteredBytes[i++];
-                        finalBytes[j++] = 255;
-                    }
-
-                    for (int k = 0; k < 8; k++)
-                    {
-                        j = (x * 4) + ((y + 5) * destinationStride) + (k * 4);
-                        finalBytes[j++] = unfilteredBytes[i++];
-                        finalBytes[j++] = unfilteredBytes[i++];
-                        finalBytes[j++] = unfilteredBytes[i++];
-                        finalBytes[j++] = 255;
-                    }
-
-                    for (int k = 0; k < 8; k++)
-                    {
-                        j = (x * 4) + ((y + 7) * destinationStride) + (k * 4);
-                        finalBytes[j++] = unfilteredBytes[i++];
-                        finalBytes[j++] = unfilteredBytes[i++];
-                        finalBytes[j++] = unfilteredBytes[i++];
-                        finalBytes[j++] = 255;
-                    }
-
-
-                    x += 8;
+                    x += 1;
                     if (x >= width)
                     {
                         x = 0;
-                        y += 8;
+                        y += 2;
                     }
 
                     if (y >= height)
