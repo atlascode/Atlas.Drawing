@@ -46,7 +46,7 @@ namespace Atlas.Drawing.Serialization.JPEG
                 var temp = reader.ReadByte();
 
                 if (temp != 0xFF)
-                    throw new BadImageFormatException($"Cannot find next marker");
+                    throw new ImageFormatException($"Cannot find next marker");
 
                 var marker = reader.ReadByte();
 
@@ -91,7 +91,7 @@ namespace Atlas.Drawing.Serialization.JPEG
                         break;
 
                     default:
-                        throw new BadImageFormatException($"Unknown JPEG Marker: {marker.ToString("X4")}");
+                        throw new ImageFormatException($"Unknown JPEG Marker: {marker.ToString("X4")}");
 
                 }
             }
@@ -111,7 +111,7 @@ namespace Atlas.Drawing.Serialization.JPEG
             // JFIF allows 1 component (Y)
             // Otherwise there should be 3 (1 = Y, 2 = Cb, 3 = Cr)
             if (componentCount != 3 && componentCount != 1)
-                throw new BadImageFormatException($"Invalid component count. Expecting either 1 or 3 but found {componentCount}");
+                throw new ImageFormatException($"Invalid component count. Expecting either 1 or 3 but found {componentCount}");
 
             for (int i = 0; i < 3; i++)
             {
@@ -187,7 +187,7 @@ namespace Atlas.Drawing.Serialization.JPEG
                 var th = ((select & 0xf0) >> 3) | (select & 0x0f);
 
                 if (th > 3)
-                    throw new BadImageFormatException($"Bad DHT Header, JPEG is corrupt");
+                    throw new ImageFormatException($"Bad DHT Header, JPEG is corrupt");
 
                 byte[] lengths = reader.ReadBytes(16);
 
@@ -225,27 +225,28 @@ namespace Atlas.Drawing.Serialization.JPEG
         private void ParseSOS(BinaryReader reader)
         {
             var length = reader.ReadUInt16BE();
+            var componenets = reader.ReadByte();
 
-            if (reader.ReadByte() != 3)
-                throw new NotImplementedException();
+            if (componenets != 3)
+                throw new ImageFormatException();
 
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < componenets; i++)
             {
                 var id = reader.ReadByte();
                 var sample = reader.ReadByte();
 
                 if (i == 0 && sample != 0x00)
-                    throw new NotImplementedException();
+                    throw new ImageFormatException();
 
                 if (i != 0 && sample != 0x11)
-                    throw new NotImplementedException();
+                    throw new ImageFormatException();
             }
 
             if (reader.ReadByte() != 0)
-                throw new NotImplementedException();
+                throw new ImageFormatException();
 
             if (reader.ReadByte() != 63)
-                throw new NotImplementedException();
+                throw new ImageFormatException();
 
             reader.ReadByte();
 
@@ -286,7 +287,109 @@ namespace Atlas.Drawing.Serialization.JPEG
 
             _scanData = scanData.ToArray();
         }
-       
+        private byte[] DecodeScan()
+        {
+            var rowMcu = ((_xResolution + 15) / 16);
+            var colMcu = ((_yResolution + 15) / 16);
+            var mcu = (rowMcu * colMcu);
+            var stride = (((rowMcu * 16 * 3) + 3) & ~0x03);
+            var image = new byte[colMcu * 16 * stride];
+
+            using (var reader = new BitReader(new MemoryStream(_scanData)))
+            {
+                ushort dY = 0;
+                ushort dCb = 0;
+                ushort dCr = 0;
+
+                var block = new ushort[6][];
+
+                for (int i = 0; i < rowMcu; i++)
+                {
+                    for (int j = 0; j < colMcu; j++)
+                    {
+                        for (int k = 0; k < 4; k++)
+                        {
+                            block[k] = DecodeBlock(reader, false);
+                            block[k][0] += dY;
+                            dY = block[k][0];
+                            DequantBlock(block[k], false);
+                        }
+
+                        block[4] = DecodeBlock(reader, true);
+                        block[4][0] += dCb;
+                        dCb = block[4][0];
+                        DequantBlock(block[4], true);
+
+                        block[5] = DecodeBlock(reader, true);
+                        block[5][0] += dCr;
+                        dCr = block[5][0];
+                        DequantBlock(block[5], true);
+
+                        // TODO(Dan): Idct
+                        for (int m = 0; m < 6; m++)
+                        {
+                            //block[m] = Idct stuff
+                        }
+
+                        // TODO(Dan): YCbCr -> RGB conversion for the block
+                        
+                    }
+                }
+            }
+
+            return image;
+        }
+        private ushort[] DecodeBlock(BitReader reader, bool chroma)
+        {
+            var tab = chroma ? 1 : 0;
+            var result = new ushort[64];
+
+            // Read DC value
+            var huffmanTable = _dht[0 + tab][reader.Peek(16)];
+            reader.Skip(huffmanTable.B);
+            result[0] = DecodeNumber(reader.Read(huffmanTable.V), huffmanTable.V);
+
+            // Read AC values
+            var i = 1;
+            while (i < 64)
+            {
+                huffmanTable = _dht[2 + tab][reader.Peek(16)];
+                var s = huffmanTable.V & 15;
+                var r = huffmanTable.V >> 4;
+
+                switch (huffmanTable.V)
+                {
+                    case 0x00:
+                        i = 63;
+                        break;
+                    case 0xf0:
+                        i += 16;
+                        continue;
+                    default:
+                        i += r;
+                        result[_naturalOrder[i]] = DecodeNumber(reader.Read(huffmanTable.V & 0x0f), huffmanTable.V & 0x0f);
+                        break;
+                }
+
+                i++;
+            }
+
+            return result;
+        }
+        private void DequantBlock(ushort[] block, bool chroma)
+        {
+            ushort[] dqt = _dqt[chroma ? 1 : 0];
+
+            for (int i = 0; i < 8 * 8; i++)
+                block[i] *= dqt[i];
+        }
+        private ushort DecodeNumber(ushort num, int bits)
+        {
+            return (ushort)(num < (1 << (bits - 1))
+                ? num - ((1 << bits) - 1)
+                : num);
+        }
+
         private enum Marker : byte
         {
             DUMMY = 0x00,
