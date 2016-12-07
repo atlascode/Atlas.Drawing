@@ -13,7 +13,7 @@ namespace PNG.Sample
 
             foreach (var file in Directory.GetFiles(@"pngsuite", "*.png"))
             {
-                if (Path.GetFileName(file).StartsWith("basi2c08")) {
+                if (Path.GetFileName(file).StartsWith("basi") && !Path.GetFileName(file).Contains("p")) {
                     var png = Image.FromFile(file);
                     png.Save(Path.Combine("output", Path.GetFileNameWithoutExtension(file) + ".png"), ImageFormat.Png);
                 }
