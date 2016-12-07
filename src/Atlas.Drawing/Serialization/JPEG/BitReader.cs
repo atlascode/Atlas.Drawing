@@ -9,7 +9,7 @@ namespace Atlas.Drawing.Serialization.JPEG
         private uint _buffer;
         private Stream _stream;
 
-        public int Peak(int bitCount)
+        public int Peek(int bitCount)
         {
             EnsureData(bitCount);
 
@@ -17,7 +17,7 @@ namespace Atlas.Drawing.Serialization.JPEG
 
             return (int)((_buffer & mask) >> (_count - bitCount));
         }
-        public int Read(int bitCount)
+        public ushort Read(int bitCount)
         {
             EnsureData(bitCount);
 
@@ -26,7 +26,7 @@ namespace Atlas.Drawing.Serialization.JPEG
 
             _count -= bitCount;
 
-            return value;
+            return (ushort)value;
         }
         public void Skip(int bitCount)
         {
