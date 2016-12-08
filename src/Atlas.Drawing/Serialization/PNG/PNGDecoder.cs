@@ -28,29 +28,40 @@ namespace Atlas.Drawing.Serialization.PNG
             // Skip the first 8 bytes
             int byteIndex = 8;
             bool end = false;
-            while (byteIndex < bytes.Length && !end)
+            using (var ms = new MemoryStream())
             {
-                int chunkLength = EndianBitConverter.Big.ToInt32(bytes, byteIndex); byteIndex += 4;
-                string chunkType = System.Text.Encoding.ASCII.GetString(bytes, byteIndex, 4); byteIndex += 4;
-
-                switch (chunkType)
+                while (byteIndex < bytes.Length && !end)
                 {
-                    case "IHDR":
-                        ReadHeader(ref bytes, byteIndex);
-                        break;
-                    case "PLTE":
-                        ReadPalette(ref bytes, byteIndex, chunkLength);
-                        break;
-                    case "IDAT":
-                        rawBytes = UnpackData(ref bytes, byteIndex, chunkLength);
-                        break;
-                    case "IEND":
-                        end = true;
-                        break;
+                    int chunkLength = EndianBitConverter.Big.ToInt32(bytes, byteIndex); byteIndex += 4;
+                    string chunkType = System.Text.Encoding.ASCII.GetString(bytes, byteIndex, 4); byteIndex += 4;
+
+                    switch (chunkType)
+                    {
+                        case "IHDR":
+                            ReadHeader(ref bytes, byteIndex);
+                            break;
+                        case "PLTE":
+                            ReadPalette(ref bytes, byteIndex, chunkLength);
+                            break;
+                        case "IDAT":
+                            ms.Write(bytes, byteIndex, chunkLength);
+                            break;
+                        case "IEND":
+                            end = true;
+                            break;
+                    }
+
+                    byteIndex += chunkLength;
+                    uint chunkCRC = EndianBitConverter.Big.ToUInt32(bytes, byteIndex); byteIndex += 4;
                 }
 
-                byteIndex += chunkLength;
-                uint chunkCRC = EndianBitConverter.Big.ToUInt32(bytes, byteIndex); byteIndex += 4;
+                ms.Position = 2;
+                using (var compressor = new DeflateStream(ms, CompressionMode.Decompress))
+                using (var resultStream = new MemoryStream())
+                {
+                    compressor.CopyTo(resultStream);
+                    rawBytes = resultStream.ToArray();
+                }
             }
 
             width = _width;
@@ -59,7 +70,7 @@ namespace Atlas.Drawing.Serialization.PNG
             int scanLineCount = height;
 
             int bitsPerPixel = _bitsPerChannel * ((_hasColor ? 3 : 1) + (_hasAlpha ? 1 : 0));
-            int bytesPerPixel = (bitsPerPixel / 8);
+            int bytesPerPixel = (int)Math.Ceiling(bitsPerPixel / 8m);
             int sourceStride = ((width * (this._useColorTable ? _bitsPerChannel : bitsPerPixel)) /8) + 1;
             int destinationStride = (width * 4);
 
@@ -160,7 +171,7 @@ namespace Atlas.Drawing.Serialization.PNG
                     else if (currentFilter == 2) // UP (pixel above)
                     {
                         byte b = 0;
-                        if (w > bytesPerPixel)
+                        if (i > sourceStride)
                         {
                             b = unfilteredBytes[j - (sourceStride - 1)];
                         }
@@ -181,7 +192,7 @@ namespace Atlas.Drawing.Serialization.PNG
                             b = unfilteredBytes[j - (sourceStride - 1)];
                         }
 
-                        unfilteredBytes[j++] = (byte)((rawBytes[i] + Math.Floor(a + b / 2m)) % 256);
+                        unfilteredBytes[j++] = (byte)((rawBytes[i] + ((a + b) >> 1)) % 256);
                     }
                     else if (currentFilter == 4) // Paeth
                     {
@@ -236,181 +247,116 @@ namespace Atlas.Drawing.Serialization.PNG
                 int[] passYIncrement = new int[] { 8, 8, 8, 4, 4, 2, 2 };
                 int[] passYOffset = new int[]    { 0, 0, 4, 0, 2, 0, 1 };
 
-                
-                if (bitsPerPixel == 1)
+
+                if (_useColorTable)
                 {
-                    for (; i < unfilteredBytes.Length;)
-                    {
-                        var bits = new BitArray(new byte[] { unfilteredBytes[i++] });
-                        for (int b = 7; b >= 0; b--)
-                        {
-                            j = (x * 4) + (y * destinationStride);
-
-                            finalBytes[j++] = (byte)(bits[b] ? 255 : 0);
-                            finalBytes[j++] = (byte)(bits[b] ? 255 : 0);
-                            finalBytes[j++] = (byte)(bits[b] ? 255 : 0);
-                            finalBytes[j++] = 255;
-
-                            x += passXIncrement[pass];
-                            if (x >= width)
-                            {
-                                // throw away unused bits in the last byte
-                                break;
-                            }
-                        }
-
-                        if (x >= width)
-                        {
-                            x = passXOffset[pass];
-                            y += passYIncrement[pass];
-                        }
-
-                        if (y >= height)
-                        {
-                            pass += 1;
-                            if (pass == 7)
-                            {
-                                break;
-                            }
-                            x = passXOffset[pass];
-                            y = passYOffset[pass];
-                        }
-                    }
-                }
-                else if (bitsPerPixel == 2)
-                {
-                    for (; i < unfilteredBytes.Length;)
-                    {
-                        var bits = new BitArray(new byte[] { unfilteredBytes[i++] });
-
-                        for (int b = 7; b >= 0; b -= 2)
-                        {
-                            j = (x * 4) + (y * destinationStride);
-
-                            int value = ((bits[b] ? 1 : 0) * 2) + (bits[b - 1] ? 1 : 0);
-                            byte color = (byte)(value * 85);
-                            finalBytes[j++] = color;
-                            finalBytes[j++] = color;
-                            finalBytes[j++] = color;
-                            finalBytes[j++] = 255;
-
-                            x += passXIncrement[pass];
-                            if (x >= width)
-                            {
-                                // throw away unused bits in the last byte
-                                break;
-                            }
-                        }
-
-                        if (x >= width)
-                        {
-                            x = passXOffset[pass];
-                            y += passYIncrement[pass];
-                        }
-
-                        if (y >= height)
-                        {
-                            pass += 1;
-                            if (pass == 7)
-                            {
-                                break;
-                            }
-                            x = passXOffset[pass];
-                            y = passYOffset[pass];
-                        }
-                    }
-                }
-                else if (bitsPerPixel == 4)
-                {
-                    for (; i < unfilteredBytes.Length;)
-                    {
-                        j = (x * 4) + (y * destinationStride);
-                        uint b = unfilteredBytes[i++];
-                        byte color = (byte)(((b & 0xF0) >> 4) * 17);
-                        finalBytes[j++] = color;
-                        finalBytes[j++] = color;
-                        finalBytes[j++] = color;
-                        finalBytes[j++] = 255;
-
-                        x += passXIncrement[pass];
-                        if (x >= width)
-                        {
-                            // throw away unused bits in the last byte
-                            break;
-                        }
-
-                        j = (x * 4) + (y * destinationStride);
-                        byte color2 = (byte)((b & 0x0F) * 17);
-                        finalBytes[j++] = color2;
-                        finalBytes[j++] = color2;
-                        finalBytes[j++] = color2;
-                        finalBytes[j++] = 255;
-
-                        x += passXIncrement[pass];
-
-                        if (x >= width)
-                        {
-                            x = passXOffset[pass];
-                            y += passYIncrement[pass];
-                        }
-
-                        if (y >= height)
-                        {
-                            pass += 1;
-                            if (pass == 7)
-                            {
-                                break;
-                            }
-                            x = passXOffset[pass];
-                            y = passYOffset[pass];
-                        }
-                    }
-                }
-                else if (bitsPerPixel == 8)
-                {
-                    for (; i < unfilteredBytes.Length;)
-                    {
-                        j = (x * 4) + (y * destinationStride);
-                        byte color = unfilteredBytes[i++];
-                        finalBytes[j++] = color;
-                        finalBytes[j++] = color;
-                        finalBytes[j++] = color;
-                        finalBytes[j++] = 255;
-
-                        x += passXIncrement[pass];
-
-                        if (x >= width)
-                        {
-                            x = passXOffset[pass];
-                            y += passYIncrement[pass];
-                        }
-
-                        if (y >= height)
-                        {
-                            pass += 1;
-                            if (pass == 7)
-                            {
-                                break;
-                            }
-                            x = passXOffset[pass];
-                            y = passYOffset[pass];
-                        }
-                    }
-                }
-                else if (bitsPerPixel == 16)
-                {
-                    if (_hasAlpha) // 8 bit 2 channels
+                    if (bitsPerPixel == 3)
                     {
                         for (; i < unfilteredBytes.Length; i++)
                         {
-                            byte color = unfilteredBytes[i++];
-                            byte alpha = unfilteredBytes[i];
+                            var bits = new BitArray(new byte[] { unfilteredBytes[i] });
+                            for (int b = 7; b >= 0; b--)
+                            {
+                                j = (x * 4) + (y * destinationStride);
+                                int colorIndex = bits[b] ? 1 : 0;
+                                finalBytes[j++] = colorPalette[colorIndex * 3];
+                                finalBytes[j++] = colorPalette[(colorIndex * 3) + 1];
+                                finalBytes[j++] = colorPalette[(colorIndex * 3) + 2];
+                                finalBytes[j++] = 255;
+
+                                x += passXIncrement[pass];
+                                if (x >= width)
+                                {
+                                    // throw away unused bits in the last byte
+                                    break;
+                                }
+                            }
+
+                            if (x >= width)
+                            {
+                                x = passXOffset[pass];
+                                y += passYIncrement[pass];
+                            }
+
+                            if (y >= height)
+                            {
+                                pass += 1;
+                                if (pass == 7)
+                                {
+                                    break;
+                                }
+                                x = passXOffset[pass];
+                                y = passYOffset[pass];
+                            }
+                        }
+                    }
+                    else if (bitsPerPixel == 6)
+                    {
+                        for (; i < unfilteredBytes.Length; i++)
+                        {
+                            var bits = new BitArray(new byte[] { unfilteredBytes[i] });
+                            for (int b = 7; b >= 0; b -= 2)
+                            {
+                                j = (x * 4) + (y * destinationStride);
+                                int colorIndex = ((bits[b] ? 1 : 0) * 2) + (bits[b - 1] ? 1 : 0);
+                                finalBytes[j++] = colorPalette[colorIndex * 3];
+                                finalBytes[j++] = colorPalette[(colorIndex * 3) + 1];
+                                finalBytes[j++] = colorPalette[(colorIndex * 3) + 2];
+                                finalBytes[j++] = 255;
+
+                                x += passXIncrement[pass];
+                                if (x >= width)
+                                {
+                                    // throw away unused bits in the last byte
+                                    break;
+                                }
+                            }
+
+                            if (x >= width)
+                            {
+                                x = passXOffset[pass];
+                                y += passYIncrement[pass];
+                            }
+
+                            if (y >= height)
+                            {
+                                pass += 1;
+                                if (pass == 7)
+                                {
+                                    break;
+                                }
+                                x = passXOffset[pass];
+                                y = passYOffset[pass];
+                            }
+                        }
+                    }
+                    else if (bitsPerPixel == 12)
+                    {
+                        for (; i < unfilteredBytes.Length; i++)
+                        {
+                            uint b = unfilteredBytes[i];
 
                             j = (x * 4) + (y * destinationStride);
-                            finalBytes[j++] = color;
-                            finalBytes[j++] = color;
-                            finalBytes[j++] = color;
-                            finalBytes[j++] = alpha;
+                            int colorIndex = (byte)((b & 0xF0) >> 4);
+                            finalBytes[j++] = colorPalette[colorIndex * 3];
+                            finalBytes[j++] = colorPalette[(colorIndex * 3) + 1];
+                            finalBytes[j++] = colorPalette[(colorIndex * 3) + 2];
+                            finalBytes[j++] = 255; // alphaPalette[colorIndex];
+
+                            x += passXIncrement[pass];
+                            if (x >= width)
+                            {
+                                // throw away unused bits in the last byte
+                                break;
+                            }
+
+                            j = (x * 4) + (y * destinationStride);
+                            int colorIndex2 = (byte)(b & 0x0F);
+                            finalBytes[j++] = colorPalette[colorIndex2 * 3];
+                            finalBytes[j++] = colorPalette[(colorIndex2 * 3) + 1];
+                            finalBytes[j++] = colorPalette[(colorIndex2 * 3) + 2];
+                            finalBytes[j++] = 255; // alphaPalette[colorIndex];
+
                             x += passXIncrement[pass];
 
                             if (x >= width)
@@ -435,15 +381,144 @@ namespace Atlas.Drawing.Serialization.PNG
                     {
                         for (; i < unfilteredBytes.Length; i++)
                         {
-                            byte color = unfilteredBytes[i++];
-                            byte color2 = unfilteredBytes[i];
+                            j = (x * 4) + (y * destinationStride);
+                            int colorIndex = unfilteredBytes[i];
+                            finalBytes[j++] = colorPalette[colorIndex * 3];
+                            finalBytes[j++] = colorPalette[(colorIndex * 3) + 1];
+                            finalBytes[j++] = colorPalette[(colorIndex * 3) + 2];
+                            finalBytes[j++] = 255; // alphaPalette[colorIndex];
 
-                            byte color3 = (byte)(((int)(color << 8) + color2) / 256);
+                            x += passXIncrement[pass];
+
+                            if (x >= width)
+                            {
+                                x = passXOffset[pass];
+                                y += passYIncrement[pass];
+                            }
+
+                            if (y >= height)
+                            {
+                                pass += 1;
+                                if (pass == 7)
+                                {
+                                    break;
+                                }
+                                x = passXOffset[pass];
+                                y = passYOffset[pass];
+                            }
+                        }
+                    }
+                }
+                else
+                {
+
+                    if (bitsPerPixel == 1)
+                    {
+                        for (; i < unfilteredBytes.Length;)
+                        {
+                            var bits = new BitArray(new byte[] { unfilteredBytes[i++] });
+                            for (int b = 7; b >= 0; b--)
+                            {
+                                j = (x * 4) + (y * destinationStride);
+
+                                finalBytes[j++] = (byte)(bits[b] ? 255 : 0);
+                                finalBytes[j++] = (byte)(bits[b] ? 255 : 0);
+                                finalBytes[j++] = (byte)(bits[b] ? 255 : 0);
+                                finalBytes[j++] = 255;
+
+                                x += passXIncrement[pass];
+                                if (x >= width)
+                                {
+                                    // throw away unused bits in the last byte
+                                    break;
+                                }
+                            }
+
+                            if (x >= width)
+                            {
+                                x = passXOffset[pass];
+                                y += passYIncrement[pass];
+                            }
+
+                            if (y >= height)
+                            {
+                                pass += 1;
+                                if (pass == 7)
+                                {
+                                    break;
+                                }
+                                x = passXOffset[pass];
+                                y = passYOffset[pass];
+                            }
+                        }
+                    }
+                    else if (bitsPerPixel == 2)
+                    {
+                        for (; i < unfilteredBytes.Length;)
+                        {
+                            var bits = new BitArray(new byte[] { unfilteredBytes[i++] });
+
+                            for (int b = 7; b >= 0; b -= 2)
+                            {
+                                j = (x * 4) + (y * destinationStride);
+
+                                int value = ((bits[b] ? 1 : 0) * 2) + (bits[b - 1] ? 1 : 0);
+                                byte color = (byte)(value * 85);
+                                finalBytes[j++] = color;
+                                finalBytes[j++] = color;
+                                finalBytes[j++] = color;
+                                finalBytes[j++] = 255;
+
+                                x += passXIncrement[pass];
+                                if (x >= width)
+                                {
+                                    // throw away unused bits in the last byte
+                                    break;
+                                }
+                            }
+
+                            if (x >= width)
+                            {
+                                x = passXOffset[pass];
+                                y += passYIncrement[pass];
+                            }
+
+                            if (y >= height)
+                            {
+                                pass += 1;
+                                if (pass == 7)
+                                {
+                                    break;
+                                }
+                                x = passXOffset[pass];
+                                y = passYOffset[pass];
+                            }
+                        }
+                    }
+                    else if (bitsPerPixel == 4)
+                    {
+                        for (; i < unfilteredBytes.Length;)
+                        {
+                            j = (x * 4) + (y * destinationStride);
+                            uint b = unfilteredBytes[i++];
+                            byte color = (byte)(((b & 0xF0) >> 4) * 17);
+                            finalBytes[j++] = color;
+                            finalBytes[j++] = color;
+                            finalBytes[j++] = color;
+                            finalBytes[j++] = 255;
+
+                            x += passXIncrement[pass];
+                            if (x >= width)
+                            {
+                                // throw away unused bits in the last byte
+                                break;
+                            }
 
                             j = (x * 4) + (y * destinationStride);
-                            finalBytes[j++] = color3;
-                            finalBytes[j++] = color3;
-                            finalBytes[j++] = color3;
+                            byte color2 = (byte)((b & 0x0F) * 17);
+                            finalBytes[j++] = color2;
+                            finalBytes[j++] = color2;
+                            finalBytes[j++] = color2;
                             finalBytes[j++] = 255;
 
                             x += passXIncrement[pass];
@@ -466,51 +541,16 @@ namespace Atlas.Drawing.Serialization.PNG
                             }
                         }
                     }
-                }
-
-                else if (bitsPerPixel == 24)
-                {
-                    for (; i < unfilteredBytes.Length;)
-                    {
-                        j = (x * 4) + (y * destinationStride);
-                        finalBytes[j++] = unfilteredBytes[i++];
-                        finalBytes[j++] = unfilteredBytes[i++];
-                        finalBytes[j++] = unfilteredBytes[i++];
-                        finalBytes[j++] = 255;
-
-                        x += passXIncrement[pass];
-
-                        if (x >= width)
-                        {
-                            x = passXOffset[pass];
-                            y += passYIncrement[pass];
-                        }
-
-                        if (y >= height)
-                        {
-                            pass += 1;
-                            if (pass == 7)
-                            {
-                                break;
-                            }
-                            x = passXOffset[pass];
-                            y = passYOffset[pass];
-                        }
-                    }
-                }
-                else if (bitsPerPixel == 32)
-                {
-                    if (!_hasColor && _hasAlpha) // 16 bit 2 channels
+                    else if (bitsPerPixel == 8)
                     {
                         for (; i < unfilteredBytes.Length;)
                         {
-                            byte color = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
-                            byte alpha = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
                             j = (x * 4) + (y * destinationStride);
+                            byte color = unfilteredBytes[i++];
                             finalBytes[j++] = color;
                             finalBytes[j++] = color;
                             finalBytes[j++] = color;
-                            finalBytes[j++] = alpha;
+                            finalBytes[j++] = 255;
 
                             x += passXIncrement[pass];
 
@@ -532,7 +572,79 @@ namespace Atlas.Drawing.Serialization.PNG
                             }
                         }
                     }
-                    else // 8 bit color with alpha
+                    else if (bitsPerPixel == 16)
+                    {
+                        if (_hasAlpha) // 8 bit 2 channels
+                        {
+                            for (; i < unfilteredBytes.Length;)
+                            {
+                                byte color = unfilteredBytes[i++];
+                                byte alpha = unfilteredBytes[i++];
+
+                                j = (x * 4) + (y * destinationStride);
+                                finalBytes[j++] = color;
+                                finalBytes[j++] = color;
+                                finalBytes[j++] = color;
+                                finalBytes[j++] = alpha;
+
+                                x += passXIncrement[pass];
+
+                                if (x >= width)
+                                {
+                                    x = passXOffset[pass];
+                                    y += passYIncrement[pass];
+                                }
+
+                                if (y >= height)
+                                {
+                                    pass += 1;
+                                    if (pass == 7)
+                                    {
+                                        break;
+                                    }
+                                    x = passXOffset[pass];
+                                    y = passYOffset[pass];
+                                }
+                            }
+                        }
+                        else
+                        {
+                            for (; i < unfilteredBytes.Length; )
+                            {
+                                byte color = unfilteredBytes[i++];
+                                byte color2 = unfilteredBytes[i++];
+
+                                byte color3 = (byte)(((int)(color << 8) + color2) / 256);
+
+                                j = (x * 4) + (y * destinationStride);
+                                finalBytes[j++] = color3;
+                                finalBytes[j++] = color3;
+                                finalBytes[j++] = color3;
+                                finalBytes[j++] = 255;
+
+                                x += passXIncrement[pass];
+
+                                if (x >= width)
+                                {
+                                    x = passXOffset[pass];
+                                    y += passYIncrement[pass];
+                                }
+
+                                if (y >= height)
+                                {
+                                    pass += 1;
+                                    if (pass == 7)
+                                    {
+                                        break;
+                                    }
+                                    x = passXOffset[pass];
+                                    y = passYOffset[pass];
+                                }
+                            }
+                        }
+                    }
+
+                    else if (bitsPerPixel == 24)
                     {
                         for (; i < unfilteredBytes.Length;)
                         {
@@ -540,7 +652,132 @@ namespace Atlas.Drawing.Serialization.PNG
                             finalBytes[j++] = unfilteredBytes[i++];
                             finalBytes[j++] = unfilteredBytes[i++];
                             finalBytes[j++] = unfilteredBytes[i++];
-                            finalBytes[j++] = unfilteredBytes[i++];
+                            finalBytes[j++] = 255;
+
+                            x += passXIncrement[pass];
+
+                            if (x >= width)
+                            {
+                                x = passXOffset[pass];
+                                y += passYIncrement[pass];
+                            }
+
+                            if (y >= height)
+                            {
+                                pass += 1;
+                                if (pass == 7)
+                                {
+                                    break;
+                                }
+                                x = passXOffset[pass];
+                                y = passYOffset[pass];
+                            }
+                        }
+                    }
+                    else if (bitsPerPixel == 32)
+                    {
+                        if (!_hasColor && _hasAlpha) // 16 bit 2 channels
+                        {
+                            for (; i < unfilteredBytes.Length;)
+                            {
+                                byte color = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
+                                byte alpha = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
+                                j = (x * 4) + (y * destinationStride);
+                                finalBytes[j++] = color;
+                                finalBytes[j++] = color;
+                                finalBytes[j++] = color;
+                                finalBytes[j++] = alpha;
+
+                                x += passXIncrement[pass];
+
+                                if (x >= width)
+                                {
+                                    x = passXOffset[pass];
+                                    y += passYIncrement[pass];
+                                }
+
+                                if (y >= height)
+                                {
+                                    pass += 1;
+                                    if (pass == 7)
+                                    {
+                                        break;
+                                    }
+                                    x = passXOffset[pass];
+                                    y = passYOffset[pass];
+                                }
+                            }
+                        }
+                        else // 8 bit color with alpha
+                        {
+                            for (; i < unfilteredBytes.Length;)
+                            {
+                                j = (x * 4) + (y * destinationStride);
+                                finalBytes[j++] = unfilteredBytes[i++];
+                                finalBytes[j++] = unfilteredBytes[i++];
+                                finalBytes[j++] = unfilteredBytes[i++];
+                                finalBytes[j++] = unfilteredBytes[i++];
+
+                                x += passXIncrement[pass];
+
+                                if (x >= width)
+                                {
+                                    x = passXOffset[pass];
+                                    y += passYIncrement[pass];
+                                }
+
+                                if (y >= height)
+                                {
+                                    pass += 1;
+                                    if (pass == 7)
+                                    {
+                                        break;
+                                    }
+                                    x = passXOffset[pass];
+                                    y = passYOffset[pass];
+                                }
+                            }
+                        }
+                    }
+                    else if (bitsPerPixel == 48) // 16 bit color
+                    {
+                        for (; i < unfilteredBytes.Length;)
+                        {
+                            j = (x * 4) + (y * destinationStride);
+                            finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
+                            finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
+                            finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
+                            finalBytes[j++] = 255;
+
+                            x += passXIncrement[pass];
+
+                            if (x >= width)
+                            {
+                                x = passXOffset[pass];
+                                y += passYIncrement[pass];
+                            }
+
+                            if (y >= height)
+                            {
+                                pass += 1;
+                                if (pass == 7)
+                                {
+                                    break;
+                                }
+                                x = passXOffset[pass];
+                                y = passYOffset[pass];
+                            }
+                        }
+                    }
+                    else if (bitsPerPixel == 64) // 16 bit color with alpha
+                    {
+                        for (; i < unfilteredBytes.Length;)
+                        {
+                            j = (x * 4) + (y * destinationStride);
+                            finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
+                            finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
+                            finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
+                            finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
 
                             x += passXIncrement[pass];
 
@@ -563,67 +800,6 @@ namespace Atlas.Drawing.Serialization.PNG
                         }
                     }
                 }
-                else if (bitsPerPixel == 48) // 16 bit color
-                {
-                    for (; i < unfilteredBytes.Length;)
-                    {
-                        j = (x * 4) + (y * destinationStride);
-                        finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
-                        finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
-                        finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
-                        finalBytes[j++] = 255;
-
-                        x += passXIncrement[pass];
-
-                        if (x >= width)
-                        {
-                            x = passXOffset[pass];
-                            y += passYIncrement[pass];
-                        }
-
-                        if (y >= height)
-                        {
-                            pass += 1;
-                            if (pass == 7)
-                            {
-                                break;
-                            }
-                            x = passXOffset[pass];
-                            y = passYOffset[pass];
-                        }
-                    }
-                }
-                else if (bitsPerPixel == 64) // 16 bit color with alpha
-                {
-                    for (; i < unfilteredBytes.Length;)
-                    {
-                        j = (x * 4) + (y * destinationStride);
-                        finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
-                        finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
-                        finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
-                        finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
-
-                        x += passXIncrement[pass];
-
-                        if (x >= width)
-                        {
-                            x = passXOffset[pass];
-                            y += passYIncrement[pass];
-                        }
-
-                        if (y >= height)
-                        {
-                            pass += 1;
-                            if (pass == 7)
-                            {
-                                break;
-                            }
-                            x = passXOffset[pass];
-                            y = passYOffset[pass];
-                        }
-                    }
-                }
-
 
             }
             else
@@ -673,9 +849,9 @@ namespace Atlas.Drawing.Serialization.PNG
                             finalBytes[j++] = 255; // alphaPalette[colorIndex];
 
                             int colorIndex2 = (byte)(b & 0x0F);
-                            finalBytes[j++] = colorPalette[colorIndex * 3];
-                            finalBytes[j++] = colorPalette[(colorIndex * 3) + 1];
-                            finalBytes[j++] = colorPalette[(colorIndex * 3) + 2];
+                            finalBytes[j++] = colorPalette[colorIndex2 * 3];
+                            finalBytes[j++] = colorPalette[(colorIndex2 * 3) + 1];
+                            finalBytes[j++] = colorPalette[(colorIndex2 * 3) + 2];
                             finalBytes[j++] = 255; // alphaPalette[colorIndex];
 
                         }
