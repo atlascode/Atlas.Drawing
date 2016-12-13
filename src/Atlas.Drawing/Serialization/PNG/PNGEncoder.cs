@@ -67,6 +67,7 @@ namespace Atlas.Drawing.Serialization.PNG
             // Build IEND chunk
             WriteChunk(png,0x49454E44,null);
             // return PNG
+
 	        return ms.ToArray();
 	    }
 
@@ -152,12 +153,13 @@ namespace Atlas.Drawing.Serialization.PNG
                 var adler = new Adler32Computer();
                 adler.Update(uncompressedBytes, 0, uncompressedBytes.Length);
 
-                using (var compressor = new DeflateStream(compressStream, CompressionMode.Compress))
+                byte[] compressedBytes;
+                using (var compressor = new DeflateStream(compressStream, CompressionMode.Compress, true))
                 {
                     input.CopyTo(compressor);
+                    compressor.Flush();
+                    compressedBytes = compressStream.ToArray();
                 }
-
-                var compressedBytes = compressStream.ToArray();
 
                 var zlibBytes = new byte[compressedBytes.Length + 6];
 
