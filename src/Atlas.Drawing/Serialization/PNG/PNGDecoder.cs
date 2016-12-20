@@ -22,6 +22,19 @@ namespace Atlas.Drawing.Serialization.PNG
         private byte[] colorPalette = new byte[256*3];
         private byte[] alphaPalette = new byte[256];
 
+        private int CalculateScanlineLength(int width)
+        {
+            int scanlineLength = width * (this._useColorTable ? _bitsPerChannel : this._bitsPerChannel * ((_hasColor ? 3 : 1) + (_hasAlpha ? 1 : 0)));
+
+            int amount = scanlineLength % 8;
+            if (amount != 0)
+            {
+                scanlineLength += 8 - amount;
+            }
+
+            return scanlineLength / 8;
+        }
+
         public byte[] Decode(ref byte[] bytes, out int width, out int height)
         {
             byte[] rawBytes = null;
@@ -71,10 +84,10 @@ namespace Atlas.Drawing.Serialization.PNG
 
             int bitsPerPixel = _bitsPerChannel * ((_hasColor ? 3 : 1) + (_hasAlpha ? 1 : 0));
             int bytesPerPixel = (int)Math.Ceiling(bitsPerPixel / 8m);
-            int sourceStride = ((width * (this._useColorTable ? _bitsPerChannel : bitsPerPixel)) /8) + 1;
+            int sourceStride = (int)Math.Ceiling(((width * (this._useColorTable ? _bitsPerChannel : bitsPerPixel)) / 8d)) + 1;
             int destinationStride = (width * 4);
 
-            int unfilteredBytesLength = ((width * (this._useColorTable ? _bitsPerChannel : bitsPerPixel)) / 8) * height;
+            int unfilteredBytesLength = (sourceStride - 1) * height;
 
             int interlacePass = 0;
             int[] interlaceStrides = new int[7];
@@ -87,38 +100,62 @@ namespace Atlas.Drawing.Serialization.PNG
                 {
                     if (i == 0)
                     {
-                        interlaceStrides[i] = (int)(Math.Ceiling((sourceStride - 1) / 8d)) + 1;
-                        interlaceLineCounts[i] = (int)Math.Ceiling(height / 8d);
+                        interlaceStrides[i] = CalculateScanlineLength((width + 7) / 8) + 1; //(int)Math.Ceiling(((width * (this._useColorTable ? _bitsPerChannel : bitsPerPixel)) / 8) /8d) + 1;
+                        interlaceLineCounts[i] = (height + 7) / 8; // (int)Math.Ceiling(height / 8d);
                     }
                     if (i == 1)
                     {
-                        interlaceStrides[i] = (int)(Math.Ceiling((sourceStride - 1) / 8d)) + 1;
-                        interlaceLineCounts[i] = (int)Math.Ceiling(height / 8d);
+                        interlaceStrides[i] = CalculateScanlineLength((width + 3) / 8) + 1; //(int)Math.Ceiling(((width * (this._useColorTable ? _bitsPerChannel : bitsPerPixel)) / 8) / 8d) + 1;
+                        interlaceLineCounts[i] = (height + 7) / 8; // (int)Math.Ceiling(height / 8d);
+                        if(width < 5)
+                        {
+                            interlaceLineCounts[i] = 0;
+                        }
                     }
                     if (i == 2)
                     {
-                        interlaceStrides[i] = (int)Math.Ceiling(((width * (this._useColorTable ? _bitsPerChannel : bitsPerPixel)) / 8) / 4d) + 1;
-                        interlaceLineCounts[i] = (int)Math.Ceiling(height / 8d);
+                        interlaceStrides[i] = CalculateScanlineLength((width + 3) / 4) + 1; //(int)Math.Ceiling(((width * (this._useColorTable ? _bitsPerChannel : bitsPerPixel)) / 8) / 4d) + 1;
+                        interlaceLineCounts[i] = (height + 3) / 8; //(height / 8) + (height % 8 > 3 ? 1 : 0);
+                        if(height < 5)
+                        {
+                            interlaceStrides[i] = 1;
+                        }
                     }
                     if (i == 3)
                     {
-                        interlaceStrides[i] = (int)Math.Ceiling(((width * (this._useColorTable ? _bitsPerChannel : bitsPerPixel)) / 8) / 4d) + 1;
-                        interlaceLineCounts[i] = (int)Math.Ceiling(height / 8d) * 2;
+                        interlaceStrides[i] = CalculateScanlineLength((width + 1) / 4) + 1; //(int)Math.Ceiling(((width * (this._useColorTable ? _bitsPerChannel : bitsPerPixel)) / 8) / 4d) + 1;
+                        interlaceLineCounts[i] = (height + 3) / 4; //(int)Math.Ceiling(height / 4d);
+                        if (width < 3)
+                        {
+                            interlaceLineCounts[i] = 0;
+                        }
                     }
                     if (i == 4)
                     {
-                        interlaceStrides[i] = (int)Math.Ceiling(((width * (this._useColorTable ? _bitsPerChannel : bitsPerPixel)) / 8) / 2d) + 1;
-                        interlaceLineCounts[i] = (int)Math.Ceiling(height / 8d) * 2;
+                        interlaceStrides[i] = CalculateScanlineLength((width + 1) / 2) + 1; //(int)Math.Ceiling((((width / 2d) * (this._useColorTable ? _bitsPerChannel : bitsPerPixel)) / 8)) + 1;
+                        interlaceLineCounts[i] = (height + 1) / 4; // ((height / 8) * 2) + (height % 8 > 6 ? 2 : height % 8 > 2 ? 1 : 0);
+                        if (height < 3)
+                        {
+                            interlaceStrides[i] = 1;
+                        }
                     }
                     if (i == 5)
                     {
-                        interlaceStrides[i] = (int)Math.Ceiling(((width * (this._useColorTable ? _bitsPerChannel : bitsPerPixel)) / 8) / 2d) + 1;
-                        interlaceLineCounts[i] = (int)Math.Ceiling(height / 8d) * 4;
+                        interlaceStrides[i] = CalculateScanlineLength(width / 2) + 1; //(int)Math.Ceiling(((Math.Floor(width / 2d) * (this._useColorTable ? _bitsPerChannel : bitsPerPixel)) / 8)) + 1;
+                        interlaceLineCounts[i] = (int)Math.Ceiling(height / 2d);
+                        if (width < 2)
+                        {
+                            interlaceLineCounts[i] = 0;
+                        }
                     }
                     if (i == 6)
                     {
-                        interlaceStrides[i] = ((width * (this._useColorTable ? _bitsPerChannel : bitsPerPixel)) / 8) + 1;
-                        interlaceLineCounts[i] = (int)Math.Ceiling(height / 8d) * 4;
+                        interlaceStrides[i] = CalculateScanlineLength(width) + 1; //(int)Math.Ceiling(((width * (this._useColorTable ? _bitsPerChannel : bitsPerPixel)) / 8d)) + 1;
+                        interlaceLineCounts[i] = (int)Math.Floor(height / 2d);
+                        if (height < 2)
+                        {
+                            interlaceStrides[i] = 1;
+                        }
                     }
 
                     unfilteredBytesLength += (interlaceStrides[i] - 1) * interlaceLineCounts[i];
@@ -140,6 +177,13 @@ namespace Atlas.Drawing.Serialization.PNG
                     interlacePass += 1;
                     sourceStride = interlaceStrides[interlacePass];
                     scanLineCount = interlaceLineCounts[interlacePass];
+
+                    while(scanLineCount == 0)
+                    {
+                        interlacePass += 1;
+                        sourceStride = interlaceStrides[interlacePass];
+                        scanLineCount = interlaceLineCounts[interlacePass];
+                    }
 
                     h = 0;
                 }
@@ -171,7 +215,7 @@ namespace Atlas.Drawing.Serialization.PNG
                     else if (currentFilter == 2) // UP (pixel above)
                     {
                         byte b = 0;
-                        if (i > sourceStride)
+                        if (h > 0)
                         {
                             b = unfilteredBytes[j - (sourceStride - 1)];
                         }
@@ -187,7 +231,7 @@ namespace Atlas.Drawing.Serialization.PNG
                         {
                             a = unfilteredBytes[j - bytesPerPixel];
                         }
-                        if (i > sourceStride)
+                        if (h > 0)
                         {
                             b = unfilteredBytes[j - (sourceStride - 1)];
                         }
@@ -204,7 +248,7 @@ namespace Atlas.Drawing.Serialization.PNG
                         {
                             a = unfilteredBytes[j - bytesPerPixel];
                         }
-                        if (i > sourceStride)
+                        if (h > 0)
                         {
                             b = unfilteredBytes[j - (sourceStride-1)];
                         }
@@ -252,23 +296,26 @@ namespace Atlas.Drawing.Serialization.PNG
                 {
                     if (bitsPerPixel == 3)
                     {
-                        for (; i < unfilteredBytes.Length; i++)
+                        for (; i < unfilteredBytes.Length; )
                         {
-                            var bits = new BitArray(new byte[] { unfilteredBytes[i] });
-                            for (int b = 7; b >= 0; b--)
+                            if (x < width && y < height)
                             {
-                                j = (x * 4) + (y * destinationStride);
-                                int colorIndex = bits[b] ? 1 : 0;
-                                finalBytes[j++] = colorPalette[colorIndex * 3];
-                                finalBytes[j++] = colorPalette[(colorIndex * 3) + 1];
-                                finalBytes[j++] = colorPalette[(colorIndex * 3) + 2];
-                                finalBytes[j++] = 255;
-
-                                x += passXIncrement[pass];
-                                if (x >= width)
+                                var bits = new BitArray(new byte[] { unfilteredBytes[i++] });
+                                for (int b = 7; b >= 0; b--)
                                 {
-                                    // throw away unused bits in the last byte
-                                    break;
+                                    j = (x * 4) + (y * destinationStride);
+                                    int colorIndex = bits[b] ? 1 : 0;
+                                    finalBytes[j++] = colorPalette[colorIndex * 3];
+                                    finalBytes[j++] = colorPalette[(colorIndex * 3) + 1];
+                                    finalBytes[j++] = colorPalette[(colorIndex * 3) + 2];
+                                    finalBytes[j++] = 255;
+
+                                    x += passXIncrement[pass];
+                                    if (x >= width)
+                                    {
+                                        // throw away unused bits in the last byte
+                                        break;
+                                    }
                                 }
                             }
 
@@ -344,18 +391,18 @@ namespace Atlas.Drawing.Serialization.PNG
                             finalBytes[j++] = 255; // alphaPalette[colorIndex];
 
                             x += passXIncrement[pass];
-                            if (x >= width)
+                            if (x < width)
                             {
                                 // throw away unused bits in the last byte
-                                break;
+                                j = (x * 4) + (y * destinationStride);
+                                int colorIndex2 = (byte)(b & 0x0F);
+                                finalBytes[j++] = colorPalette[colorIndex2 * 3];
+                                finalBytes[j++] = colorPalette[(colorIndex2 * 3) + 1];
+                                finalBytes[j++] = colorPalette[(colorIndex2 * 3) + 2];
+                                finalBytes[j++] = 255; // alphaPalette[colorIndex];
                             }
 
-                            j = (x * 4) + (y * destinationStride);
-                            int colorIndex2 = (byte)(b & 0x0F);
-                            finalBytes[j++] = colorPalette[colorIndex2 * 3];
-                            finalBytes[j++] = colorPalette[(colorIndex2 * 3) + 1];
-                            finalBytes[j++] = colorPalette[(colorIndex2 * 3) + 2];
-                            finalBytes[j++] = 255; // alphaPalette[colorIndex];
+                            
 
                             x += passXIncrement[pass];
 
@@ -802,12 +849,13 @@ namespace Atlas.Drawing.Serialization.PNG
                 }
 
             }
-            else
+            else // Non interlaced
             {
                 if (_useColorTable)
                 {
                     if (bitsPerPixel == 3)
                     {
+                        int x = 0;
                         for (int i = 0, j = 0; i < unfilteredBytes.Length; i++)
                         {
                             var bits = new BitArray(new byte[] { unfilteredBytes[i] });
@@ -818,11 +866,21 @@ namespace Atlas.Drawing.Serialization.PNG
                                 finalBytes[j++] = colorPalette[(colorIndex * 3) + 1];
                                 finalBytes[j++] = colorPalette[(colorIndex * 3) + 2];
                                 finalBytes[j++] = 255;
+
+                                x += 1;
+
+                                if (x >= width)
+                                {
+                                    // throw away unused bits in the last byte
+                                    x = 0;
+                                    break;
+                                }
                             }
                         }
                     }
                     else if (bitsPerPixel == 6)
                     {
+                        int x = 0;
                         for (int i = 0, j = 0; i < unfilteredBytes.Length; i++)
                         {
                             var bits = new BitArray(new byte[] { unfilteredBytes[i] });
@@ -833,11 +891,21 @@ namespace Atlas.Drawing.Serialization.PNG
                                 finalBytes[j++] = colorPalette[(colorIndex * 3) + 1];
                                 finalBytes[j++] = colorPalette[(colorIndex * 3) + 2];
                                 finalBytes[j++] = 255;
+
+                                x += 1;
+
+                                if (x >= width)
+                                {
+                                    // throw away unused bits in the last byte
+                                    x = 0;
+                                    break;
+                                }
                             }
                         }
                     }
                     else if (bitsPerPixel == 12)
                     {
+                        int x = 0;
                         for (int i = 0, j = 0; i < unfilteredBytes.Length; i++)
                         {
                             uint b = unfilteredBytes[i];
@@ -848,12 +916,26 @@ namespace Atlas.Drawing.Serialization.PNG
                             finalBytes[j++] = colorPalette[(colorIndex * 3) + 2];
                             finalBytes[j++] = 255; // alphaPalette[colorIndex];
 
+                            x += 1;
+
+                            if (x >= width)
+                            {
+                                // throw away unused bits in the last byte
+                                x = 0;
+                                continue;
+                            }
+
                             int colorIndex2 = (byte)(b & 0x0F);
                             finalBytes[j++] = colorPalette[colorIndex2 * 3];
                             finalBytes[j++] = colorPalette[(colorIndex2 * 3) + 1];
                             finalBytes[j++] = colorPalette[(colorIndex2 * 3) + 2];
                             finalBytes[j++] = 255; // alphaPalette[colorIndex];
 
+                            x += 1;
+                            if (x >= width)
+                            {
+                                x = 0;
+                            }
                         }
                     }
                     else
