@@ -18,9 +18,12 @@ namespace Atlas.Drawing.Serialization.PNG
         private bool _useColorTable = false;
         private bool _hasColor = false;
         private bool _hasAlpha = false;
+        private bool _hasTransparency = false;
 
         private byte[] colorPalette = new byte[256*3];
         private byte[] alphaPalette = new byte[256];
+
+        private UInt16[] _transparentColor;
 
         private int CalculateScanlineLength(int width)
         {
@@ -55,6 +58,9 @@ namespace Atlas.Drawing.Serialization.PNG
                             break;
                         case "PLTE":
                             ReadPalette(ref bytes, byteIndex, chunkLength);
+                            break;
+                        case "tRNS":
+                            ReadTransparencyPalette(ref bytes, byteIndex, chunkLength);
                             break;
                         case "IDAT":
                             ms.Write(bytes, byteIndex, chunkLength);
@@ -865,7 +871,7 @@ namespace Atlas.Drawing.Serialization.PNG
                                 finalBytes[j++] = colorPalette[colorIndex * 3];
                                 finalBytes[j++] = colorPalette[(colorIndex * 3) + 1];
                                 finalBytes[j++] = colorPalette[(colorIndex * 3) + 2];
-                                finalBytes[j++] = 255;
+                                finalBytes[j++] = _hasTransparency ? alphaPalette[colorIndex] : (byte)255;
 
                                 x += 1;
 
@@ -890,7 +896,7 @@ namespace Atlas.Drawing.Serialization.PNG
                                 finalBytes[j++] = colorPalette[colorIndex * 3];
                                 finalBytes[j++] = colorPalette[(colorIndex * 3) + 1];
                                 finalBytes[j++] = colorPalette[(colorIndex * 3) + 2];
-                                finalBytes[j++] = 255;
+                                finalBytes[j++] = _hasTransparency ? alphaPalette[colorIndex] : (byte)255; ;
 
                                 x += 1;
 
@@ -914,7 +920,7 @@ namespace Atlas.Drawing.Serialization.PNG
                             finalBytes[j++] = colorPalette[colorIndex * 3];
                             finalBytes[j++] = colorPalette[(colorIndex * 3) + 1];
                             finalBytes[j++] = colorPalette[(colorIndex * 3) + 2];
-                            finalBytes[j++] = 255; // alphaPalette[colorIndex];
+                            finalBytes[j++] = _hasTransparency ? alphaPalette[colorIndex] : (byte)255; ; // alphaPalette[colorIndex];
 
                             x += 1;
 
@@ -929,7 +935,7 @@ namespace Atlas.Drawing.Serialization.PNG
                             finalBytes[j++] = colorPalette[colorIndex2 * 3];
                             finalBytes[j++] = colorPalette[(colorIndex2 * 3) + 1];
                             finalBytes[j++] = colorPalette[(colorIndex2 * 3) + 2];
-                            finalBytes[j++] = 255; // alphaPalette[colorIndex];
+                            finalBytes[j++] = _hasTransparency ? alphaPalette[colorIndex] : (byte)255; ; // alphaPalette[colorIndex];
 
                             x += 1;
                             if (x >= width)
@@ -946,7 +952,7 @@ namespace Atlas.Drawing.Serialization.PNG
                             finalBytes[j++] = colorPalette[colorIndex * 3];
                             finalBytes[j++] = colorPalette[(colorIndex * 3) + 1];
                             finalBytes[j++] = colorPalette[(colorIndex * 3) + 2];
-                            finalBytes[j++] = 255; // alphaPalette[colorIndex];
+                            finalBytes[j++] = _hasTransparency ? alphaPalette[colorIndex] : (byte)255; ; // alphaPalette[colorIndex];
                         }
                     }
                 }
@@ -991,13 +997,13 @@ namespace Atlas.Drawing.Serialization.PNG
                             finalBytes[j++] = color;
                             finalBytes[j++] = color;
                             finalBytes[j++] = color;
-                            finalBytes[j++] = 255;
+                            finalBytes[j++] = !_hasTransparency ? (byte)255 : (b & 0xF0) >> 4 == _transparentColor[0] ? (byte)0 : (byte)255;
 
                             byte color2 = (byte)((b & 0x0F) * 17);
                             finalBytes[j++] = color2;
                             finalBytes[j++] = color2;
                             finalBytes[j++] = color2;
-                            finalBytes[j++] = 255;
+                            finalBytes[j++] = !_hasTransparency ? (byte)255 : (b & 0x0F) == _transparentColor[0] ? (byte)0 : (byte)255;
                         }
                     }
                     else if (bitsPerPixel == 8)
@@ -1027,17 +1033,15 @@ namespace Atlas.Drawing.Serialization.PNG
                         }
                         else
                         {
-                            for (int i = 0, j = 0; i < unfilteredBytes.Length; i++)
+                            for (int i = 0, j = 0; i < unfilteredBytes.Length;)
                             {
-                                byte color = unfilteredBytes[i++];
-                                byte color2 = unfilteredBytes[i];
-
-                                byte color3 = (byte)(((int)(color << 8) + color2) / 256);
+                                UInt16 c = (UInt16)((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]);
+                                byte color3 = (byte)(c / 256);
 
                                 finalBytes[j++] = color3;
                                 finalBytes[j++] = color3;
                                 finalBytes[j++] = color3;
-                                finalBytes[j++] = 255;
+                                finalBytes[j++] = !_hasTransparency ? (byte)255 : c == _transparentColor[0] ? (byte)0 : (byte)255;
                             }
                         }
                     }
@@ -1045,10 +1049,22 @@ namespace Atlas.Drawing.Serialization.PNG
                     {
                         for (int i = 0, j = 0; i < unfilteredBytes.Length;)
                         {
-                            finalBytes[j++] = unfilteredBytes[i++];
-                            finalBytes[j++] = unfilteredBytes[i++];
-                            finalBytes[j++] = unfilteredBytes[i++];
-                            finalBytes[j++] = 255;
+                            byte r = unfilteredBytes[i++];
+                            byte g = unfilteredBytes[i++];
+                            byte b = unfilteredBytes[i++];
+
+                            finalBytes[j++] = r;
+                            finalBytes[j++] = g;
+                            finalBytes[j++] = b;
+
+                            if (!_hasTransparency || r != _transparentColor[0] || g != _transparentColor[1] || b != _transparentColor[2])
+                            {
+                                finalBytes[j++] = 255;
+                            }
+                            else
+                            {
+                                finalBytes[j++] = 0;
+                            }
                         }
                     }
                     else if (bitsPerPixel == 32)
@@ -1080,10 +1096,23 @@ namespace Atlas.Drawing.Serialization.PNG
                     {
                         for (int i = 0, j = 0; i < unfilteredBytes.Length;)
                         {
-                            finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
-                            finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
-                            finalBytes[j++] = (byte)(((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]) / 256);
-                            finalBytes[j++] = 255;
+                            UInt16 r = (UInt16)((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]);
+                            UInt16 g = (UInt16)((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]);
+                            UInt16 b = (UInt16)((unfilteredBytes[i++] << 8) | unfilteredBytes[i++]);
+
+
+                            finalBytes[j++] = (byte)(r / 256);
+                            finalBytes[j++] = (byte)(g / 256);
+                            finalBytes[j++] = (byte)(b / 256);
+
+                            if (!_hasTransparency || r != _transparentColor[0] || g != _transparentColor[1] || b != _transparentColor[2])
+                            {
+                                finalBytes[j++] = 255;
+                            }
+                            else
+                            {
+                                finalBytes[j++] = 0;
+                            }
                         }
                     }
                     else if (bitsPerPixel == 64) // 16 bit color with alpha
@@ -1145,6 +1174,37 @@ namespace Atlas.Drawing.Serialization.PNG
             for (int i = 0; i < length; i++)
             {
                 colorPalette[i] = bytes[offset++];
+            }
+        }
+
+        private void ReadTransparencyPalette(ref byte[] bytes, int offset, int length)
+        {
+            _hasTransparency = true;
+            if (_colorType == 0) // Grayscale
+            {
+                _transparentColor = new UInt16[] { EndianBitConverter.Big.ToUInt16(bytes, offset) };
+            }
+            else if (_colorType == 2) // Color
+            {
+                _transparentColor = new UInt16[] 
+                {
+                    EndianBitConverter.Big.ToUInt16(bytes, offset), //R
+                    EndianBitConverter.Big.ToUInt16(bytes, offset + 2), //G
+                    EndianBitConverter.Big.ToUInt16(bytes, offset + 4) //B
+                };
+            }
+            else if (_colorType == 3) // indexed
+            {
+                int i = 0;
+                for (i = 0; i < length; i++)
+                {
+                    alphaPalette[i] = bytes[offset++];
+                }
+
+                for (; i < alphaPalette.Length; i++)
+                {
+                    alphaPalette[i] = 255;
+                }
             }
         }
 

@@ -13,7 +13,7 @@ namespace PNG.Sample
 
             foreach (var file in Directory.GetFiles(@"pngsuite", "*.png"))
             {
-                if (!Path.GetFileName(file).StartsWith("x") && Path.GetFileName(file).EndsWith(".png"))
+                if (Path.GetFileName(file).EndsWith(".png"))
                 {
                     try
                     {
