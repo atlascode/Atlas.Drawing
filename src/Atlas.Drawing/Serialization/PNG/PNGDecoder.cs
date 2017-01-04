@@ -25,6 +25,8 @@ namespace Atlas.Drawing.Serialization.PNG
 
         private UInt16[] _transparentColor;
 
+        private uint _gama = 0;
+
         private int CalculateScanlineLength(int width)
         {
             int scanlineLength = width * (this._useColorTable ? _bitsPerChannel : this._bitsPerChannel * ((_hasColor ? 3 : 1) + (_hasAlpha ? 1 : 0)));
@@ -61,6 +63,9 @@ namespace Atlas.Drawing.Serialization.PNG
                             break;
                         case "tRNS":
                             ReadTransparencyPalette(ref bytes, byteIndex, chunkLength);
+                            break;
+                        case "gAMA":
+                            _gama = EndianBitConverter.Big.ToUInt32(bytes, byteIndex);
                             break;
                         case "IDAT":
                             ms.Write(bytes, byteIndex, chunkLength);
@@ -1128,7 +1133,25 @@ namespace Atlas.Drawing.Serialization.PNG
                 }
             }
 
+            if(_gama != 0)
+            {
+                ApplyGama(ref finalBytes);
+            }
+
             return finalBytes;
+        }
+
+        private void ApplyGama(ref byte[] bytes)
+        {
+            // This is not performant at all and will be switched to a lookup table later.
+            double gama = 1.0 / (_gama / 100000.0);
+            for (int i = 0; i < bytes.Length;)
+            {
+                bytes[i] = (byte)Math.Round(Math.Pow(bytes[i++] / 255d, gama) * 255); //r
+                bytes[i] = (byte)Math.Round(Math.Pow(bytes[i++] / 255d, gama) * 255); //g
+                bytes[i] = (byte)Math.Round(Math.Pow(bytes[i++] / 255d, gama) * 255); //b
+                i++; // Gama doesnt apply to alpha
+            }
         }
 
         private int PaethPredictor(int a, int b, int c)
