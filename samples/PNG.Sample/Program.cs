@@ -13,17 +13,17 @@ namespace PNG.Sample
 
             foreach (var file in Directory.GetFiles(@"pngsuite", "*.png"))
             {
-                if (Path.GetFileName(file).EndsWith(".png")  && Path.GetFileName(file).StartsWith("g"))
+                if (Path.GetFileName(file).EndsWith(".png"))
                 {
-                    //try
-                    //{
+                    try
+                    {
                         var png = Image.FromFile(file);
                         png.Save(Path.Combine("output", Path.GetFileNameWithoutExtension(file) + ".png"), ImageFormat.Png);
-                    //}
-                    //catch (Exception)
-                    //{
-                    //    System.IO.File.WriteAllBytes(Path.Combine("output", Path.GetFileNameWithoutExtension(file) + ".png"), new byte[] { });
-                    //}
+                    }
+                    catch (Exception)
+                    {
+                        System.IO.File.WriteAllBytes(Path.Combine("output", Path.GetFileNameWithoutExtension(file) + ".png"), new byte[] { });
+                    }
                 }
             }
         }

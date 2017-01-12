@@ -1144,7 +1144,7 @@ namespace Atlas.Drawing.Serialization.PNG
         private void ApplyGama(ref byte[] bytes)
         {
             // This is not performant at all and will be switched to a lookup table later.
-            double gama = 1.0 / (_gama / 100000.0);
+            double gama = 1.25 / (_gama * 2.5 / 100000.0); //1.25 is viewing gama and 2.5 is display gama
             for (int i = 0; i < bytes.Length;)
             {
                 bytes[i] = (byte)Math.Round(Math.Pow(bytes[i++] / 255d, gama) * 255); //r
