@@ -3,6 +3,7 @@ using System.IO;
 using Atlas.Drawing.Imaging;
 using Atlas.Drawing.Serialization.BMP;
 using Atlas.Drawing.Serialization.PNG;
+using Atlas.Drawing.Serialization.GIF;
 
 namespace Atlas.Drawing
 {
@@ -61,7 +62,7 @@ namespace Atlas.Drawing
             string header = System.Text.Encoding.ASCII.GetString(imageBytes, 0, 4);
 
             //try
-            //{
+            {
                 if (header.Substring(0,2) == "BM")
                 {
                     int width;
@@ -76,7 +77,14 @@ namespace Atlas.Drawing
                     var bytes = new PNGDecoder().Decode(ref imageBytes, out width, out height);
                     return new Image(bytes, width, height);
                 }
-            //}
+                else if (header.StartsWith("GIF"))
+                {
+                    int width;
+                    int height;
+                    var bytes = new GIFDecoder().Decode(ref imageBytes, out width, out height);
+                    return new Image(bytes, width, height);
+                }
+            }
             //catch (Exception ex)
             //{
             //    // We wrap exceptions reading images with an OutOfMemory Exception because the System.Drawing.Image class throws these exceptions from GDI+ so to maintain backwards compatability we throw the same
