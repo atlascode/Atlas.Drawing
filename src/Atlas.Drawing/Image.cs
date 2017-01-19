@@ -79,8 +79,9 @@ namespace Atlas.Drawing
             }
             else if (IsJpeg(ref imageBytes))
             {
-                int width;
-                int height;
+                int width = 0;
+                int height = 0;
+
                 var bytes = new JPEGDecoder().Decode(ref imageBytes, out width, out height);
                 return new Image(bytes, width, height);
             }

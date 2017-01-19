@@ -16,9 +16,9 @@ namespace JPEG.Sample
             //    jpg.Save(Path.Combine("output", Path.GetFileNameWithoutExtension(file) + ".png"), ImageFormat.Png);
             //}
 
-            var jpg = Image.FromFile(@"samples\sample-graphic.jpg");
+            var jpg = Image.FromFile(@"samples\Untitled.jpg");
 
-            jpg.Save(Path.Combine("output", Path.GetFileNameWithoutExtension(@"samples\sample-graphic.jpg") + ".png"), ImageFormat.Png);
+            jpg.Save(Path.Combine("output", Path.GetFileNameWithoutExtension(@"samples\Untitled.jpg") + ".png"), ImageFormat.Png);
         }
     }
 }
